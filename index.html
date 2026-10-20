@@ -1,0 +1,2608 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GrantTrace — Decentralized Education Grant Audit Trail (Solana Devnet)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              200: '#a7f3d0',
+              300: '#6ee7b7',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+              950: '#022c22',
+            },
+            solana: {
+              purple: '#9945FF',
+              green: '#14F195',
+              dark: '#121217',
+            },
+            slate: {
+              850: '#131c2e',
+              900: '#0f172a',
+              950: '#090d16',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Fira Code', 'Courier New', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background-color: #090d16;
+      color: #e2e8f0;
+      overflow-x: hidden;
+    }
+    
+    /* Custom scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #10b981; }
+
+    /* Subtle animations */
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 10px rgba(16, 185, 129, 0.25); }
+      50% { box-shadow: 0 0 22px rgba(16, 185, 129, 0.55); }
+    }
+    .glow-pulse { animation: pulse-glow 2.5s infinite; }
+
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .page-animate { animation: fadeSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+    /* Glass card styles */
+    .glass-card {
+      background: rgba(19, 28, 46, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 14px;
+    }
+    .glass-card:hover {
+      border-color: rgba(16, 185, 129, 0.3);
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    }
+
+    .nav-item {
+      transition: all 0.2s ease;
+      border-left: 3px solid transparent;
+    }
+    .nav-item.active {
+      background: linear-gradient(90deg, rgba(16, 185, 129, 0.15), transparent);
+      border-left-color: #10b981;
+      color: #34d399;
+      font-weight: 600;
+    }
+    .nav-item:hover:not(.active) {
+      background: rgba(255, 255, 255, 0.03);
+      color: #f1f5f9;
+    }
+
+    /* Sol gradient text */
+    .sol-gradient {
+      background: linear-gradient(135deg, #14F195 0%, #9945FF 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .emerald-gradient {
+      background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-[#090d16] text-slate-100 antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- TOP BAR / HEADER -->
+  <header class="sticky top-0 z-40 bg-[#090d16]/90 backdrop-blur-xl border-b border-slate-800/80 px-4 lg:px-6 py-3 flex items-center justify-between">
+    <!-- Left: Brand & Academic Tag -->
+    <div class="flex items-center gap-3">
+      <button onclick="toggleMobileSidebar()" class="lg:hidden p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 focus:outline-none">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+
+      <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('landing')">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-solana-green flex items-center justify-center shadow-lg shadow-brand-500/20 text-white font-black text-xl">
+          G
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-1.5">
+              Grant<span class="text-brand-400">Trace</span>
+            </h1>
+            <span class="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/30 font-semibold tracking-wider">
+              Solana Devnet
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400 hidden sm:block">
+            Decentralized Education Grant Audit Trail • <span class="text-slate-300 font-medium">Aulia Rachman (G.231.24.0065)</span>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center/Right: Network Badge, Role Switcher & Wallet -->
+    <div class="flex items-center gap-2 sm:gap-3">
+      <!-- Interactive Guided Demo Tour Button -->
+      <button onclick="startInteractiveDemoModal()" class="hidden md:flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-solana-purple/20 text-purple-300 border border-solana-purple/40 hover:bg-solana-purple/30 transition-all">
+        <svg class="w-3.5 h-3.5 text-purple-300" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/></svg>
+        <span>⚡ Demo Alur Bisnis</span>
+      </button>
+
+      <!-- Role Selector Dropdown -->
+      <div class="relative flex items-center bg-slate-900 border border-slate-700/80 rounded-lg px-2.5 py-1.5 shadow-inner">
+        <label for="roleSwitchSelect" class="text-[11px] text-slate-400 mr-2 font-medium hidden lg:inline">Peran:</label>
+        <select id="roleSwitchSelect" onchange="onRoleChange(this.value)" class="bg-transparent text-xs font-semibold text-slate-200 focus:outline-none cursor-pointer pr-1">
+          <option value="admin" class="bg-slate-900 text-white">🔑 Admin Kampus</option>
+          <option value="mahasiswa" class="bg-slate-900 text-white">🎓 Mahasiswa</option>
+          <option value="auditor" class="bg-slate-900 text-white">🔍 Auditor / Publik</option>
+        </select>
+      </div>
+
+      <!-- Wallet Connect Action -->
+      <button id="walletHeaderBtn" onclick="openWalletModal()" class="flex items-center gap-2 text-xs font-medium px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 text-white shadow-md shadow-brand-700/20 transition-all">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+        <span id="walletHeaderLabel">Connect Wallet</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- BODY WRAPPER (SIDEBAR + MAIN) -->
+  <div class="flex-1 flex w-full relative">
+
+    <!-- DESKTOP SIDEBAR -->
+    <aside id="desktopSidebar" class="hidden lg:flex flex-col w-64 bg-slate-950/70 border-r border-slate-800/80 p-4 space-y-6 shrink-0">
+      
+      <!-- Role Badge Summary Card -->
+      <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[10px] uppercase font-mono tracking-wider text-slate-400">Aktif Sebagai</span>
+          <span id="roleBadgePill" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300">
+            ADMIN
+          </span>
+        </div>
+        <p id="roleBadgeTitle" class="text-sm font-semibold text-white">Admin Pengelola</p>
+        <p id="roleBadgeSubtitle" class="text-xs text-slate-400 mt-0.5">Biro Kemahasiswaan & Finansial</p>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="space-y-1 flex-1" id="sidebarNavContainer">
+        <!-- Rendered dynamically depending on role -->
+      </nav>
+
+      <!-- Network & Simulation Status Card -->
+      <div class="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/80 space-y-2.5">
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-slate-400">Jaringan:</span>
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-brand-400 glow-pulse"></span>
+            <span class="text-brand-300 font-mono text-[11px] font-medium">Solana Devnet</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-slate-400">Cluster Slot:</span>
+          <span id="clusterSlotTicker" class="font-mono text-[11px] text-slate-300">#312,854,190</span>
+        </div>
+        <div class="pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
+          <span>PII Sanitization:</span>
+          <span class="text-brand-400 font-medium">100% Zero-Leak</span>
+        </div>
+      </div>
+
+      <!-- Student Author Info -->
+      <div class="px-2 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 space-y-1">
+        <p class="font-medium text-slate-300">Praktikum Keamanan Data</p>
+        <p>Aulia Rachman • G.231.24.0065</p>
+        <p class="text-[10px] text-slate-400">Modul 1 & Modul 2 Web3 MVP</p>
+      </div>
+    </aside>
+
+    <!-- MOBILE SIDEBAR OVERLAY & DRAWER -->
+    <div id="mobileSidebarBackdrop" onclick="toggleMobileSidebar()" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden lg:hidden"></div>
+    <aside id="mobileSidebar" class="fixed top-0 bottom-0 left-0 w-72 bg-slate-950 border-r border-slate-800 p-5 space-y-6 z-50 transform -translate-x-full transition-transform duration-300 ease-in-out lg:hidden flex flex-col">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold">G</div>
+          <span class="font-bold text-white">GrantTrace</span>
+        </div>
+        <button onclick="toggleMobileSidebar()" class="text-slate-400 hover:text-white p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <nav class="space-y-1 flex-1" id="mobileSidebarNavContainer"></nav>
+
+      <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-400">
+        <p class="font-medium text-white">Aulia Rachman (G.231.24.0065)</p>
+        <p class="text-[11px] text-brand-400 mt-1">Solana Devnet Simulation</p>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT VIEWPORT -->
+    <main class="flex-1 min-h-[calc(100vh-65px)] p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full" id="mainAppViewport">
+      <!-- Content injected by JavaScript router -->
+    </main>
+
+  </div>
+
+  <!-- GLOBAL FOOTER -->
+  <footer class="bg-slate-950 border-t border-slate-800/80 py-6 px-4 lg:px-8 text-center text-xs text-slate-400">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <div class="w-2 h-2 rounded-full bg-brand-500"></div>
+        <span><strong>GrantTrace</strong> — Sistem Jejak Rekam Transparansi Distribusi Beasiswa</span>
+      </div>
+      <div class="flex flex-wrap items-center justify-center gap-4 text-slate-400">
+        <span>Praktikum Keamanan Data dan Blockchain</span>
+        <span>•</span>
+        <span>Aulia Rachman (G.231.24.0065)</span>
+        <span>•</span>
+        <span>Modul 1 & Modul 2</span>
+      </div>
+      <div class="text-[11px] text-amber-400/90 font-mono">
+        ⚠️ Simulasi Devnet (Tanpa Dana Riil & Tanpa Private Key Nyata)
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- 1. WALLET CONNECT MODAL -->
+  <div id="walletModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm hidden">
+    <div class="glass-card max-w-md w-full p-6 bg-slate-900 border border-slate-700 shadow-2xl relative rounded-2xl animate-fadeSlideIn">
+      <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Hubungkan Solana Wallet</h3>
+            <p class="text-xs text-slate-400">Pilih provider dompet untuk simulasi Devnet</p>
+          </div>
+        </div>
+        <button onclick="closeWalletModal()" class="text-slate-400 hover:text-white p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div id="walletModalBody" class="space-y-3">
+        <!-- Wallet Options -->
+        <button onclick="selectWalletProvider('Phantom')" class="w-full flex items-center justify-between p-3.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 hover:border-brand-500/50 transition-all group">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-[#ab9ff2]/20 flex items-center justify-center text-solana-purple font-bold">
+              👻
+            </div>
+            <div class="text-left">
+              <p class="text-sm font-semibold text-white group-hover:text-brand-300">Phantom Wallet</p>
+              <p class="text-xs text-slate-400">Solana Devnet Adapter</p>
+            </div>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded-md bg-brand-500/10 text-brand-400 font-medium">Rekomendasi</span>
+        </button>
+
+        <button onclick="selectWalletProvider('Solflare')" class="w-full flex items-center justify-between p-3.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 hover:border-brand-500/50 transition-all group">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400 font-bold">
+              ☀️
+            </div>
+            <div class="text-left">
+              <p class="text-sm font-semibold text-white group-hover:text-brand-300">Solflare Wallet</p>
+              <p class="text-xs text-slate-400">Web3 Non-Custodial</p>
+            </div>
+          </div>
+          <span class="text-xs text-slate-500">Devnet</span>
+        </button>
+
+        <button onclick="selectWalletProvider('Backpack')" class="w-full flex items-center justify-between p-3.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 hover:border-brand-500/50 transition-all group">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-red-500/20 flex items-center justify-center text-red-400 font-bold">
+              🎒
+            </div>
+            <div class="text-left">
+              <p class="text-sm font-semibold text-white group-hover:text-brand-300">Backpack Wallet</p>
+              <p class="text-xs text-slate-400">xNFT Supported</p>
+            </div>
+          </div>
+          <span class="text-xs text-slate-500">Devnet</span>
+        </button>
+      </div>
+
+      <div class="mt-5 p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+        <p class="text-slate-300 font-medium flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z" clip-rule="evenodd"/></svg>
+          Protokol Keamanan Modul 1 & 2:
+        </p>
+        <p>• Dilarang memasukkan Private Key atau 12-Kata Seed Phrase nyata.</p>
+        <p>• Wallet terhubung menggunakan Public Key simulasi pada Solana Devnet.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. SOLANA DEVNET TRANSACTION INSPECTOR MODAL -->
+  <div id="txInspectorModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md hidden">
+    <div class="glass-card max-w-2xl w-full p-6 bg-slate-900 border border-slate-700 shadow-2xl relative rounded-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center font-mono font-bold">
+            TX
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              Solana Devnet Transaction Inspector
+              <span id="modalTxStatusBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300">
+                Finalized
+              </span>
+            </h3>
+            <p class="text-xs text-slate-400">Verifikasi Integritas Data On-Chain & Memo Instruction</p>
+          </div>
+        </div>
+        <button onclick="closeTxInspectorModal()" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="space-y-4 py-4 text-xs font-mono" id="txInspectorContent">
+        <!-- Injected dynamically -->
+      </div>
+
+      <div class="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <span class="text-[11px] text-slate-400">Cluster: <strong class="text-slate-300">api.devnet.solana.com</strong></span>
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <button onclick="copyCurrentTxSig()" class="flex-1 sm:flex-none px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-sans font-medium transition-colors">
+            📋 Salin Signature
+          </button>
+          <a id="modalExplorerExternalLink" href="#" target="_blank" class="flex-1 sm:flex-none px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-sans font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-brand-700/20">
+            <span>Solana Explorer</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. GUIDED DEMO TOUR MODAL -->
+  <div id="guidedDemoModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md hidden">
+    <div class="glass-card max-w-xl w-full p-6 bg-slate-900 border border-slate-700 shadow-2xl relative rounded-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-2.5">
+          <span class="text-2xl">⚡</span>
+          <div>
+            <h3 class="text-base font-bold text-white">Panduan Demo Alur Bisnis GrantTrace</h3>
+            <p class="text-xs text-brand-400 font-medium">Pengujian 3 Role Sesuai Rubrik Modul 2 (Bobot 25%)</p>
+          </div>
+        </div>
+        <button onclick="closeInteractiveDemoModal()" class="text-slate-400 hover:text-white p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="space-y-3.5 py-4 text-xs text-slate-300 leading-relaxed">
+        <p>Anda dapat menguji alur bisnis terdesentralisasi 4 tahap dengan mudah:</p>
+
+        <div class="p-3 rounded-xl bg-slate-800/70 border border-slate-700/80 flex items-start gap-3">
+          <div class="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 font-bold flex items-center justify-center shrink-0">1</div>
+          <div>
+            <p class="font-semibold text-white">Tahap 1: Admin Kampus — Rilis Termin Beasiswa</p>
+            <p class="text-slate-400 mt-0.5">Pilih role <strong>Admin Kampus</strong>, buka menu <strong>Kelola Beasiswa</strong>, lalu klik tombol <em>"Rilis Termin 2"</em> pada program aktif. Status akan berubah menjadi <span class="text-amber-400 font-medium">Released</span>.</p>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-slate-800/70 border border-slate-700/80 flex items-start gap-3">
+          <div class="w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 font-bold flex items-center justify-center shrink-0">2</div>
+          <div>
+            <p class="font-semibold text-white">Tahap 2: Mahasiswa — Konfirmasi Penerimaan Dana</p>
+            <p class="text-slate-400 mt-0.5">Ganti role ke <strong>Mahasiswa</strong>, buka menu <strong>Portal Mahasiswa</strong>. Mahasiswa menandatangani bukti konfirmasi via wallet. Status berubah menjadi <span class="text-brand-400 font-medium">Acknowledged</span>.</p>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-slate-800/70 border border-slate-700/80 flex items-start gap-3">
+          <div class="w-6 h-6 rounded-full bg-purple-500/20 text-purple-400 font-bold flex items-center justify-center shrink-0">3</div>
+          <div>
+            <p class="font-semibold text-white">Tahap 3: Auditor / Publik — Verifikasi Terbuka</p>
+            <p class="text-slate-400 mt-0.5">Ganti role ke <strong>Auditor / Publik</strong>. Tanpa connect wallet, auditor dapat mencari ID Program atau mengklik log audit untuk melihat rincian on-chain transaksi.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-800 flex justify-end gap-2">
+        <button onclick="closeInteractiveDemoModal()" class="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold">
+          Mulai Coba Sekarang
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+  <!-- ==================== JAVASCRIPT LOGIC ==================== -->
+  <script>
+    // ==================== INITIAL DATA STATE ====================
+    // Synchronized Mock Datastore matching Modul 1 & Modul 2 specifications
+    const APP_STATE = {
+      currentRole: 'admin', // 'admin' | 'mahasiswa' | 'auditor'
+      currentPage: 'landing',
+      wallet: {
+        connected: true,
+        provider: 'Phantom',
+        publicKey: '8Kx2Qp9WvR4mNt6Yd1Zc7SbE5aLk3JhF9gMn8pTr4qVx',
+        shortKey: '8Kx2...4qVx',
+        balance: '2.450 SOL (Devnet)',
+      },
+      clusterSlot: 312854190,
+      programs: [
+        {
+          id: 'BEA-2025-001',
+          nama: 'Beasiswa Prestasi Akademik 2025',
+          kategori: 'Prestasi',
+          totalDana: 'Rp 150.000.000',
+          danaRaw: 150000000,
+          penerimaCount: 25,
+          totalTermin: 3,
+          currentTermin: 2,
+          status: 'Released', // 'Allocated' | 'Released' | 'Acknowledged'
+          batchHash: '0x7f8a3b1c9e4d6a8f2c0b5e7d9a1f4c6e8b2a0d3f',
+          tanggalAlokasi: '2025-03-15',
+          adminWallet: 'Gx4zM8pL1qRv9kNt2sYw5hBc3dFa7eJp8uWx9vTr6mK9p',
+          deskripsi: 'Bantuan biaya hidup dan pendidikan bagi mahasiswa berprestasi dengan IPK di atas 3.75.'
+        },
+        {
+          id: 'BEA-2025-002',
+          nama: 'Bantuan UKT Mahasiswa Kurang Mampu',
+          kategori: 'Sosial / Afirmasi',
+          totalDana: 'Rp 200.000.000',
+          danaRaw: 200000000,
+          penerimaCount: 40,
+          totalTermin: 2,
+          currentTermin: 1,
+          status: 'Allocated',
+          batchHash: '0x2d6e8f0a1b3c5e7a9f1d3b5c7e9a1b3d5f7a9c2e',
+          tanggalAlokasi: '2025-04-01',
+          adminWallet: 'Hb7yLk8nQ2mP9vRw1sTx4zBc6dFa8eJp0uWx1vTr2nL2q',
+          deskripsi: 'Subsidi biaya SPP/UKT untuk mahasiswa aktif semester genap dengan verifikasi SKTM resmi.'
+        },
+        {
+          id: 'BEA-2025-003',
+          nama: 'Hibah Riset Inovasi & Blockchain Mahasiswa',
+          kategori: 'Riset & Teknologi',
+          totalDana: 'Rp 80.000.000',
+          danaRaw: 80000000,
+          penerimaCount: 10,
+          totalTermin: 3,
+          currentTermin: 3,
+          status: 'Acknowledged',
+          batchHash: '0x5a9c2e7d4f1b3a6c8e0d2f4a6b8c0e2d4f6a8b0c',
+          tanggalAlokasi: '2025-02-20',
+          adminWallet: 'Gx4zM8pL1qRv9kNt2sYw5hBc3dFa7eJp8uWx9vTr6mK9p',
+          deskripsi: 'Pendanaan eksperimen prototipe teknologi desentralisasi dan keamanan siber kampus.'
+        },
+        {
+          id: 'BEA-2024-010',
+          nama: 'Bantuan Dana Pendidikan Ikatan Alumni',
+          kategori: 'Alumni Donor',
+          totalDana: 'Rp 120.000.000',
+          danaRaw: 120000000,
+          penerimaCount: 30,
+          totalTermin: 2,
+          currentTermin: 2,
+          status: 'Released',
+          batchHash: '0x1b3d5f7a9c2e4b6d8f0a2c4e6a8b0d2f4a6c8e0a',
+          tanggalAlokasi: '2025-01-10',
+          adminWallet: 'Jk3wPn5mQ8tR1vSw4xYb7zAc9dFa1eJp3uWx5vTr8pR5s',
+          deskripsi: 'Donasi filantropi ikatan alumni bagi mahasiswa semester akhir yang menyelesaikan skripsi.'
+        },
+        {
+          id: 'BEA-2024-011',
+          nama: 'Beasiswa Tahfidz & Keagamaan Berkelanjutan',
+          kategori: 'Bakat / Keagamaan',
+          totalDana: 'Rp 60.000.000',
+          danaRaw: 60000000,
+          penerimaCount: 15,
+          totalTermin: 3,
+          currentTermin: 1,
+          status: 'Allocated',
+          batchHash: '0x8e2c4a6d0f1b3e5a7c9e1b3d5f7a9c2e4b6d8f0b',
+          tanggalAlokasi: '2025-05-05',
+          adminWallet: 'Hb7yLk8nQ2mP9vRw1sTx4zBc6dFa8eJp0uWx1vTr2nL2q',
+          deskripsi: 'Apresiasi kampus bagi mahasiswa penghafal Al-Quran minimal 10 juz.'
+        }
+      ],
+      // Student beneficiaries list (with strictly masked PII as required by PDP/GDPR and Modul 1 Section 4)
+      mahasiswa: [
+        {
+          id: 'MHS-001',
+          namaMasked: 'Au*** Ra***** (Aulia Rachman)',
+          nimMasked: 'G.231.24.0065',
+          programId: 'BEA-2025-001',
+          wallet: '8Kx2Qp9WvR4mNt6Yd1Zc7SbE5aLk3JhF9gMn8pTr4qVx',
+          bankTujuan: 'Bank Mandiri (Rek: ****-****-4491)',
+          termin1: { status: 'Acknowledged', dana: 'Rp 2.000.000', date: '2025-03-16', sig: '4yKp8N...3wQm' },
+          termin2: { status: 'Released', dana: 'Rp 2.000.000', date: '2025-04-10', sig: '5Uc3x...rN7k' },
+          termin3: { status: 'Allocated', dana: 'Rp 2.000.000', date: 'Menunggu Jadwal', sig: null },
+          totalDiterima: 'Rp 2.000.000'
+        },
+        {
+          id: 'MHS-002',
+          namaMasked: 'Di** Pr*****',
+          nimMasked: 'G.231.24.0012',
+          programId: 'BEA-2025-001',
+          wallet: '3Qw7Vp9XtN8jRt2Yc5SbE7aLk1JhF4gMn6pTr8qVx',
+          bankTujuan: 'Bank BRI (Rek: ****-****-8812)',
+          termin1: { status: 'Acknowledged', dana: 'Rp 2.000.000', date: '2025-03-16', sig: '2Fp7y...bQ5s' },
+          termin2: { status: 'Released', dana: 'Rp 2.000.000', date: '2025-04-10', sig: '7dRe...nK4p' },
+          termin3: { status: 'Allocated', dana: 'Rp 2.000.000', date: 'Menunggu Jadwal', sig: null },
+          totalDiterima: 'Rp 2.000.000'
+        },
+        {
+          id: 'MHS-003',
+          namaMasked: 'Fa*** Nu******',
+          nimMasked: 'G.231.24.0088',
+          programId: 'BEA-2025-002',
+          wallet: '9Lp4Qp1WkW6yNt8Yd3Zc9SbE2aLk5JhF7gMn1pTr3qVx',
+          bankTujuan: 'Bank BNI (Rek: ****-****-1092)',
+          termin1: { status: 'Allocated', dana: 'Rp 2.500.000', date: 'Menunggu Rilis', sig: null },
+          termin2: { status: 'Allocated', dana: 'Rp 2.500.000', date: 'Menunggu Rilis', sig: null },
+          termin3: null,
+          totalDiterima: 'Rp 0'
+        },
+        {
+          id: 'MHS-004',
+          namaMasked: 'Si** Nu******',
+          nimMasked: 'G.231.23.0041',
+          programId: 'BEA-2025-003',
+          wallet: '5Hm1Qp4WxF3rNt2Yd7Zc1SbE8aLk9JhF3gMn5pTr7qVx',
+          bankTujuan: 'Bank BCA (Rek: ****-****-9923)',
+          termin1: { status: 'Acknowledged', dana: 'Rp 2.666.666', date: '2025-02-22', sig: '6Bn2q...fM8t' },
+          termin2: { status: 'Acknowledged', dana: 'Rp 2.666.666', date: '2025-03-20', sig: '9Km4w...tP2j' },
+          termin3: { status: 'Acknowledged', dana: 'Rp 2.666.666', date: '2025-04-15', sig: '1xAb...cJ9r' },
+          totalDiterima: 'Rp 8.000.000'
+        }
+      ],
+      auditLogs: [
+        {
+          txId: '5Uc3xNp9VrW8tQ2mKs6hJb1dFa4eJp7uWx9vTr7nK4p',
+          programId: 'BEA-2025-001',
+          terminNo: 2,
+          aksi: 'Rilis Termin 2 Beasiswa Prestasi',
+          aktorRole: 'Admin Kampus (Issuer)',
+          aktorWallet: 'Gx4zM8pL1qRv9kNt2sYw5hBc3dFa7eJp8uWx9vTr6mK9p',
+          status: 'Released',
+          slot: 312847291,
+          timestamp: '2025-10-18 14:32:05 WIB',
+          fee: '0.000005 SOL',
+          signature: '5Uc3xNp9VrW8tQ2mKs6hJb1dFa4eJp7uWx9vTr7nK4p',
+          memo: '{"action":"RELEASE_TERMIN","programId":"BEA-2025-001","termin":2,"batchHash":"0x7f8a3b...a2f1"}'
+        },
+        {
+          txId: '9Km4wLp8TtP2jRw6sVb1nFa3eJp9uWx2vTr5mK1q8dRe',
+          programId: 'BEA-2025-003',
+          terminNo: 2,
+          aksi: 'Konfirmasi Penerimaan Dana Termin 2',
+          aktorRole: 'Mahasiswa (Beneficiary)',
+          aktorWallet: '5Hm1Qp4WxF3rNt2Yd7Zc1SbE8aLk9JhF3gMn5pTr7qVx',
+          status: 'Acknowledged',
+          slot: 312845112,
+          timestamp: '2025-10-17 09:15:22 WIB',
+          fee: '0.000005 SOL',
+          signature: '9Km4wLp8TtP2jRw6sVb1nFa3eJp9uWx2vTr5mK1q8dRe',
+          memo: '{"action":"ACKNOWLEDGE_GRANT","programId":"BEA-2025-003","termin":2,"beneficiaryId":"MHS-004"}'
+        },
+        {
+          txId: '2Fp7yQm1WbQ5sNt9Yc4SbE8aLk2JhF6gMn8pTr1qVxAb',
+          programId: 'BEA-2025-001',
+          terminNo: 1,
+          aksi: 'Rilis Termin 1 Beasiswa Prestasi',
+          aktorRole: 'Admin Kampus (Issuer)',
+          aktorWallet: 'Gx4zM8pL1qRv9kNt2sYw5hBc3dFa7eJp8uWx9vTr6mK9p',
+          status: 'Released',
+          slot: 312840003,
+          timestamp: '2025-10-15 11:48:39 WIB',
+          fee: '0.000005 SOL',
+          signature: '2Fp7yQm1WbQ5sNt9Yc4SbE8aLk2JhF6gMn8pTr1qVxAb',
+          memo: '{"action":"RELEASE_TERMIN","programId":"BEA-2025-001","termin":1,"batchHash":"0x7f8a3b...a2f1"}'
+        },
+        {
+          txId: '8Lw1zNp4KkR6nNt2Yd8Zc3SbE7aLk4JhF1gMn7pTr9qYu',
+          programId: 'BEA-2025-002',
+          terminNo: 1,
+          aksi: 'Alokasi Program Beasiswa UKT Baru',
+          aktorRole: 'Admin Kampus (Issuer)',
+          aktorWallet: 'Hb7yLk8nQ2mP9vRw1sTx4zBc6dFa8eJp0uWx1vTr2nL2q',
+          status: 'Allocated',
+          slot: 312835887,
+          timestamp: '2025-10-14 08:22:11 WIB',
+          fee: '0.000005 SOL',
+          signature: '8Lw1zNp4KkR6nNt2Yd8Zc3SbE7aLk4JhF1gMn7pTr9qYu',
+          memo: '{"action":"ALLOCATE_PROGRAM","programId":"BEA-2025-002","totalDana":200000000,"penerima":40}'
+        },
+        {
+          txId: '4Hj9vMp2WxD3mNt7Yc1SbE6aLk5JhF8gMn3pTr2qLk',
+          programId: 'BEA-2024-010',
+          terminNo: 2,
+          aksi: 'Rilis Termin 2 Beasiswa Alumni',
+          aktorRole: 'Admin Kampus (Issuer)',
+          aktorWallet: 'Jk3wPn5mQ8tR1vSw4xYb7zAc9dFa1eJp3uWx5vTr8pR5s',
+          status: 'Released',
+          slot: 312830445,
+          timestamp: '2025-10-12 16:05:47 WIB',
+          fee: '0.000005 SOL',
+          signature: '4Hj9vMp2WxD3mNt7Yc1SbE6aLk5JhF8gMn3pTr2qLk',
+          memo: '{"action":"RELEASE_TERMIN","programId":"BEA-2024-010","termin":2,"batchHash":"0x1b3d5f...f4a6"}'
+        }
+      ]
+    };
+
+    // Slot increment ticker simulation
+    setInterval(() => {
+      APP_STATE.clusterSlot += Math.floor(Math.random() * 3) + 1;
+      const el = document.getElementById('clusterSlotTicker');
+      if (el) el.textContent = '#' + APP_STATE.clusterSlot.toLocaleString('id-ID');
+    }, 2400);
+
+    // ==================== NAVIGATION CONFIG ====================
+    const NAV_CONFIG = {
+      admin: [
+        { id: 'landing', label: 'Beranda / Overview', icon: '🏛️' },
+        { id: 'admin-dashboard', label: 'Dashboard Admin', icon: '📊' },
+        { id: 'admin-programs', label: 'Kelola & Alokasi Beasiswa', icon: '📋' },
+        { id: 'admin-beneficiaries', label: 'Daftar Penerima (Masked)', icon: '👥' },
+        { id: 'hash-generator', label: 'SHA-256 Batch Generator', icon: '🔐' },
+        { id: 'public-audit', label: 'Log Transaksi On-Chain', icon: '📜' },
+        { id: 'modul-docs', label: 'Dokumentasi & Prompt Modul', icon: '📖' },
+      ],
+      mahasiswa: [
+        { id: 'landing', label: 'Beranda / Overview', icon: '🏛️' },
+        { id: 'student-portal', label: 'Portal Beasiswa Saya', icon: '🎓' },
+        { id: 'student-milestones', label: 'Jejak Milestone & Termin', icon: '📍' },
+        { id: 'verify-explorer', label: 'Verifikasi Sertifikat / Status', icon: '🔍' },
+        { id: 'public-audit', label: 'Audit Trail Transparan', icon: '📜' },
+        { id: 'modul-docs', label: 'Dokumentasi & Prompt Modul', icon: '📖' },
+      ],
+      auditor: [
+        { id: 'landing', label: 'Beranda / Overview', icon: '🏛️' },
+        { id: 'public-dashboard', label: 'Dashboard Transparansi Publik', icon: '🌐' },
+        { id: 'public-audit', label: 'Feed Log Transaksi On-Chain', icon: '📜' },
+        { id: 'verify-explorer', label: 'Cek Verifikasi Program', icon: '🔍' },
+        { id: 'architecture-threat', label: 'Arsitektur & Threat Model', icon: '🛡️' },
+        { id: 'modul-docs', label: 'Dokumentasi & Prompt Modul', icon: '📖' },
+      ]
+    };
+
+    // ==================== CORE ROUTER ====================
+    function navigate(pageId) {
+      APP_STATE.currentPage = pageId;
+      renderSidebarNav();
+      renderCurrentPage();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function onRoleChange(newRole) {
+      APP_STATE.currentRole = newRole;
+      updateRoleHeaderUI();
+      renderSidebarNav();
+
+      // Smart landing depending on role
+      if (newRole === 'admin') navigate('admin-dashboard');
+      else if (newRole === 'mahasiswa') navigate('student-portal');
+      else if (newRole === 'auditor') navigate('public-dashboard');
+
+      showToast(`Beralih ke mode: ${getRoleName(newRole)}`, 'info');
+    }
+
+    function getRoleName(role) {
+      if (role === 'admin') return 'Admin Kampus (Issuer)';
+      if (role === 'mahasiswa') return 'Mahasiswa (Beneficiary)';
+      return 'Auditor / Publik (Observer)';
+    }
+
+    function updateRoleHeaderUI() {
+      const select = document.getElementById('roleSwitchSelect');
+      if (select) select.value = APP_STATE.currentRole;
+
+      const pill = document.getElementById('roleBadgePill');
+      const title = document.getElementById('roleBadgeTitle');
+      const sub = document.getElementById('roleBadgeSubtitle');
+
+      if (APP_STATE.currentRole === 'admin') {
+        if (pill) { pill.className = 'text-[10px] font-semibold px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300'; pill.textContent = 'ADMIN'; }
+        if (title) title.textContent = 'Admin Kampus';
+        if (sub) sub.textContent = 'Pengelola & Penyalur Beasiswa';
+      } else if (APP_STATE.currentRole === 'mahasiswa') {
+        if (pill) { pill.className = 'text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300'; pill.textContent = 'BENEFICIARY'; }
+        if (title) title.textContent = 'Mahasiswa Penerima';
+        if (sub) sub.textContent = 'Penerima Hak Dana Bertahap';
+      } else {
+        if (pill) { pill.className = 'text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300'; pill.textContent = 'OBSERVER'; }
+        if (title) title.textContent = 'Auditor / Publik';
+        if (sub) sub.textContent = 'Audit Terbuka Tanpa Wallet';
+      }
+    }
+
+    function renderSidebarNav() {
+      const items = NAV_CONFIG[APP_STATE.currentRole] || NAV_CONFIG.admin;
+      const html = items.map(item => {
+        const isActive = APP_STATE.currentPage === item.id;
+        return `
+          <a href="javascript:void(0)" onclick="navigate('${item.id}'); closeMobileSidebar()" 
+             class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 ${isActive ? 'active' : ''}">
+            <span class="text-base">${item.icon}</span>
+            <span class="truncate">${item.label}</span>
+          </a>
+        `;
+      }).join('');
+
+      const desktop = document.getElementById('sidebarNavContainer');
+      const mobile = document.getElementById('mobileSidebarNavContainer');
+      if (desktop) desktop.innerHTML = html;
+      if (mobile) mobile.innerHTML = html;
+    }
+
+    function toggleMobileSidebar() {
+      const drawer = document.getElementById('mobileSidebar');
+      const backdrop = document.getElementById('mobileSidebarBackdrop');
+      if (drawer.classList.contains('-translate-x-full')) {
+        drawer.classList.remove('-translate-x-full');
+        backdrop.classList.remove('hidden');
+      } else {
+        drawer.classList.add('-translate-x-full');
+        backdrop.classList.add('hidden');
+      }
+    }
+
+    function closeMobileSidebar() {
+      const drawer = document.getElementById('mobileSidebar');
+      const backdrop = document.getElementById('mobileSidebarBackdrop');
+      if (drawer) drawer.classList.add('-translate-x-full');
+      if (backdrop) backdrop.classList.add('hidden');
+    }
+
+    // ==================== TOAST & NOTIFICATION ====================
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      
+      let border = 'border-brand-500/40';
+      let icon = '✅';
+      let bg = 'bg-slate-900/95';
+      
+      if (type === 'error') { border = 'border-red-500/40'; icon = '❌'; }
+      else if (type === 'warning') { border = 'border-amber-500/40'; icon = '⚠️'; }
+      else if (type === 'info') { border = 'border-blue-500/40'; icon = 'ℹ️'; }
+
+      toast.className = `p-3.5 rounded-xl ${bg} border ${border} shadow-2xl text-xs text-white flex items-center gap-2.5 pointer-events-auto transform translate-y-2 opacity-0 transition-all duration-300`;
+      toast.innerHTML = `<span class="text-sm">${icon}</span> <div class="flex-1">${message}</div>`;
+
+      container.appendChild(toast);
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    // ==================== CRYPTO HELPERS (WEB CRYPTO SHA-256) ====================
+    async function calculateRealSHA256(str) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(str);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      return '0x' + hashHex;
+    }
+
+    function generateDummySolSignature() {
+      const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+      return Array.from({ length: 64 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    }
+
+    function formatShortKey(k, left = 4, right = 4) {
+      if (!k) return '—';
+      if (k.length <= left + right) return k;
+      return k.slice(0, left) + '...' + k.slice(-right);
+    }
+
+    function getStatusBadge(status) {
+      if (status === 'Allocated') {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+          <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span> Allocated
+        </span>`;
+      } else if (status === 'Released') {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Released
+        </span>`;
+      } else if (status === 'Acknowledged' || status === 'Valid') {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-brand-500/15 text-brand-400 border border-brand-500/30">
+          <span class="w-1.5 h-1.5 rounded-full bg-brand-400"></span> Acknowledged
+        </span>`;
+      }
+      return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-700/50 text-slate-300">
+        ${status}
+      </span>`;
+    }
+
+    // ==================== WALLET CONTROLLER ====================
+    function openWalletModal() {
+      const modal = document.getElementById('walletModal');
+      const body = document.getElementById('walletModalBody');
+
+      if (APP_STATE.wallet.connected) {
+        body.innerHTML = `
+          <div class="p-4 rounded-xl bg-slate-800/80 border border-brand-500/30 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-400">Status:</span>
+              <span class="text-xs font-semibold text-brand-400 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-brand-400 glow-pulse"></span> Terhubung (Devnet)
+              </span>
+            </div>
+            <div>
+              <span class="text-[11px] text-slate-400 block mb-1">Public Key Akun:</span>
+              <div class="p-2 rounded bg-slate-900 border border-slate-700 font-mono text-xs text-slate-200 break-all select-all">
+                ${APP_STATE.wallet.publicKey}
+              </div>
+            </div>
+            <div class="flex items-center justify-between pt-1">
+              <span class="text-xs text-slate-400">Saldo Airdrop Devnet:</span>
+              <span class="text-xs font-mono font-bold text-solana-green">${APP_STATE.wallet.balance}</span>
+            </div>
+          </div>
+
+          <div class="flex gap-2 pt-2">
+            <button onclick="disconnectWallet()" class="w-full py-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-xs font-semibold transition-all">
+              Putuskan Sambungan Wallet
+            </button>
+          </div>
+        `;
+      } else {
+        body.innerHTML = `
+          <button onclick="selectWalletProvider('Phantom')" class="w-full flex items-center justify-between p-3.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 hover:border-brand-500/50 transition-all group">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-lg bg-[#ab9ff2]/20 flex items-center justify-center text-solana-purple font-bold">👻</div>
+              <div class="text-left">
+                <p class="text-sm font-semibold text-white group-hover:text-brand-300">Phantom Wallet</p>
+                <p class="text-xs text-slate-400">Solana Devnet Adapter</p>
+              </div>
+            </div>
+            <span class="text-xs px-2.5 py-1 rounded-md bg-brand-500/10 text-brand-400 font-medium">Rekomendasi</span>
+          </button>
+
+          <button onclick="selectWalletProvider('Solflare')" class="w-full flex items-center justify-between p-3.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 hover:border-brand-500/50 transition-all group">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400 font-bold">☀️</div>
+              <div class="text-left">
+                <p class="text-sm font-semibold text-white group-hover:text-brand-300">Solflare Wallet</p>
+                <p class="text-xs text-slate-400">Web3 Non-Custodial</p>
+              </div>
+            </div>
+            <span class="text-xs text-slate-500">Devnet</span>
+          </button>
+        `;
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeWalletModal() {
+      document.getElementById('walletModal').classList.add('hidden');
+    }
+
+    function selectWalletProvider(providerName) {
+      APP_STATE.wallet.connected = true;
+      APP_STATE.wallet.provider = providerName;
+      updateHeaderWalletUI();
+      closeWalletModal();
+      showToast(`Wallet ${providerName} terhubung di Solana Devnet!`, 'success');
+      renderCurrentPage();
+    }
+
+    function disconnectWallet() {
+      APP_STATE.wallet.connected = false;
+      updateHeaderWalletUI();
+      closeWalletModal();
+      showToast('Wallet telah diputuskan.', 'warning');
+      renderCurrentPage();
+    }
+
+    function updateHeaderWalletUI() {
+      const btn = document.getElementById('walletHeaderBtn');
+      const label = document.getElementById('walletHeaderLabel');
+      if (APP_STATE.wallet.connected) {
+        label.textContent = APP_STATE.wallet.shortKey;
+        btn.className = 'flex items-center gap-2 text-xs font-mono font-medium px-3.5 py-1.5 rounded-lg bg-slate-800 border border-brand-500/40 text-brand-300 hover:bg-slate-700 transition-all';
+      } else {
+        label.textContent = 'Connect Wallet';
+        btn.className = 'flex items-center gap-2 text-xs font-medium px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 text-white shadow-md shadow-brand-700/20 transition-all';
+      }
+    }
+
+    // ==================== TRANSACTION INSPECTOR MODAL ====================
+    let currentActiveTxSig = '';
+
+    function openTxInspector(txSignature) {
+      const tx = APP_STATE.auditLogs.find(l => l.signature === txSignature || l.txId === txSignature) || APP_STATE.auditLogs[0];
+      currentActiveTxSig = tx.signature;
+
+      const modal = document.getElementById('txInspectorModal');
+      const badge = document.getElementById('modalTxStatusBadge');
+      const content = document.getElementById('txInspectorContent');
+      const extLink = document.getElementById('modalExplorerExternalLink');
+
+      badge.innerHTML = getStatusBadge(tx.status);
+      extLink.href = `https://explorer.solana.com/tx/${tx.signature}?cluster=devnet`;
+
+      content.innerHTML = `
+        <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
+          <span class="text-slate-400 block text-[11px]">Transaction Signature:</span>
+          <span class="text-brand-300 break-all select-all">${tx.signature}</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="p-3 rounded-lg bg-slate-950 border border-slate-800">
+            <span class="text-slate-400 block text-[11px]">Block Slot:</span>
+            <span class="text-white font-bold">#${tx.slot.toLocaleString('id-ID')}</span>
+          </div>
+          <div class="p-3 rounded-lg bg-slate-950 border border-slate-800">
+            <span class="text-slate-400 block text-[11px]">Timestamp (Finalized):</span>
+            <span class="text-white">${tx.timestamp}</span>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
+          <span class="text-slate-400 block text-[11px]">Signer Authority (Wallet):</span>
+          <span class="text-slate-300 break-all select-all">${tx.aktorWallet}</span>
+          <span class="text-[10px] text-brand-400 block mt-0.5">Role: ${tx.aktorRole}</span>
+        </div>
+
+        <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
+          <span class="text-slate-400 block text-[11px]">Program ID:</span>
+          <span class="text-purple-300 font-mono">GrantTrace1111111111111111111111111111111111</span>
+        </div>
+
+        <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1.5">
+          <span class="text-slate-400 block text-[11px]">On-Chain Memo Instruction (Payload Sanitized):</span>
+          <pre class="p-2.5 rounded bg-slate-900 border border-slate-800/80 text-emerald-400 text-[11px] overflow-x-auto whitespace-pre-wrap">${JSON.stringify(JSON.parse(tx.memo || '{}'), null, 2)}</pre>
+          <span class="text-[10px] text-slate-400">✓ Mematuhi UU PDP / Zero PII Policy (Tanpa Nama Asli, NIK, atau Rekening Bank Pribadi).</span>
+        </div>
+      `;
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeTxInspectorModal() {
+      document.getElementById('txInspectorModal').classList.add('hidden');
+    }
+
+    function copyCurrentTxSig() {
+      if (currentActiveTxSig) {
+        navigator.clipboard.writeText(currentActiveTxSig);
+        showToast('Signature berhasil disalin ke clipboard!', 'info');
+      }
+    }
+
+    // ==================== INTERACTIVE DEMO TOUR MODAL ====================
+    function startInteractiveDemoModal() {
+      document.getElementById('guidedDemoModal').classList.remove('hidden');
+    }
+
+    function closeInteractiveDemoModal() {
+      document.getElementById('guidedDemoModal').classList.add('hidden');
+    }
+
+    // ==================== PAGE RENDERING DISPATCHER ====================
+    function renderCurrentPage() {
+      const container = document.getElementById('mainAppViewport');
+      container.innerHTML = '';
+      container.className = 'flex-1 min-h-[calc(100vh-65px)] p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full page-animate';
+
+      switch (APP_STATE.currentPage) {
+        case 'landing':
+          renderLandingPage(container);
+          break;
+        case 'admin-dashboard':
+          renderAdminDashboardPage(container);
+          break;
+        case 'admin-programs':
+          renderAdminProgramsPage(container);
+          break;
+        case 'admin-beneficiaries':
+          renderAdminBeneficiariesPage(container);
+          break;
+        case 'hash-generator':
+          renderHashGeneratorPage(container);
+          break;
+        case 'student-portal':
+          renderStudentPortalPage(container);
+          break;
+        case 'student-milestones':
+          renderStudentMilestonesPage(container);
+          break;
+        case 'public-dashboard':
+          renderPublicDashboardPage(container);
+          break;
+        case 'public-audit':
+          renderPublicAuditPage(container);
+          break;
+        case 'verify-explorer':
+          renderVerifyExplorerPage(container);
+          break;
+        case 'architecture-threat':
+          renderArchitectureThreatPage(container);
+          break;
+        case 'modul-docs':
+          renderModulDocsPage(container);
+          break;
+        default:
+          renderLandingPage(container);
+      }
+    }
+
+    // =========================================================================
+    // PAGE 1: LANDING PAGE
+    // =========================================================================
+    function renderLandingPage(c) {
+      const totalDana = APP_STATE.programs.reduce((acc, p) => acc + p.danaRaw, 0);
+      const totalPenerima = APP_STATE.programs.reduce((acc, p) => acc + p.penerimaCount, 0);
+      const totalTx = APP_STATE.auditLogs.length;
+
+      c.innerHTML = `
+        <div class="space-y-12 pb-12">
+          <!-- Hero Section -->
+          <div class="relative overflow-hidden rounded-3xl p-8 sm:p-12 lg:p-16 border border-slate-800 bg-gradient-to-b from-slate-900 via-slate-950 to-[#090d16] text-center">
+            <!-- Background Glow -->
+            <div class="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-24 right-1/4 w-72 h-72 bg-solana-purple/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="relative z-10 max-w-3xl mx-auto space-y-5">
+              <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/25 text-brand-300 text-xs font-semibold">
+                <span class="w-2 h-2 rounded-full bg-brand-400 glow-pulse"></span>
+                <span>Prototipe Web3 • Solana Devnet Simulation</span>
+              </div>
+
+              <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
+                Transparansi Beasiswa dengan <span class="sol-gradient">Solana Devnet</span>
+              </h1>
+
+              <p class="text-sm sm:text-base text-slate-300 font-normal leading-relaxed">
+                GrantTrace menghadirkan jejak rekam terdesentralisasi (audit trail) untuk memantau alokasi, rilis termin, dan konfirmasi penerimaan dana pendidikan secara transparan, akuntabel, dan bebas manipulasi.
+              </p>
+
+              <!-- Problem Statement Highlight Box (Official Modul 1 Format) -->
+              <div class="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-brand-500/30 text-left text-xs sm:text-sm text-slate-300 leading-relaxed shadow-lg">
+                <div class="flex items-center gap-2 text-brand-400 font-semibold mb-1.5">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+                  <span>Pernyataan Masalah (Problem Statement — Modul 1):</span>
+                </div>
+                <p class="italic text-slate-300">
+                  “Untuk donatur dan mahasiswa penerima beasiswa yang mengalami ketidakpastian dan ketidakterbukaan alur pencairan dana pendidikan, kami membangun GrantTrace agar mereka dapat memantau dan memverifikasi penyaluran dana termin secara transparan dan akuntabel. Berbeda dari pencatatan spreadsheet internal yang rentan manipulasi, sistem kami memberikan bukti status distribusi dan log riwayat pencairan yang tidak dapat dimanipulasi (tamper-proof) dengan verifikasi instan di blockchain.”
+                </p>
+              </div>
+
+              <!-- Quick Action CTA -->
+              <div class="pt-4 flex flex-wrap items-center justify-center gap-3">
+                <button onclick="onRoleChange('admin')" class="px-6 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm shadow-lg shadow-brand-700/25 transition-all flex items-center gap-2">
+                  <span>🚀 Masuk Dashboard Admin</span>
+                </button>
+                <button onclick="onRoleChange('mahasiswa')" class="px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-sm transition-all flex items-center gap-2">
+                  <span>🎓 Portal Mahasiswa</span>
+                </button>
+                <button onclick="navigate('verify-explorer')" class="px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-brand-300 border border-brand-500/30 font-semibold text-sm transition-all flex items-center gap-2">
+                  <span>🔍 Verifikasi Publik</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Metrics Bar -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="glass-card p-5">
+              <span class="text-xs text-slate-400 font-medium">Total Dana Dialokasikan</span>
+              <p class="text-2xl lg:text-3xl font-extrabold text-white mt-1">Rp ${(totalDana / 1000000).toLocaleString('id-ID')} Juta</p>
+              <div class="flex items-center gap-1.5 mt-2 text-xs text-brand-400 font-medium">
+                <span>✓ 5 Program Aktif</span>
+              </div>
+            </div>
+
+            <div class="glass-card p-5">
+              <span class="text-xs text-slate-400 font-medium">Mahasiswa Penerima</span>
+              <p class="text-2xl lg:text-3xl font-extrabold text-white mt-1">${totalPenerima}</p>
+              <div class="flex items-center gap-1.5 mt-2 text-xs text-blue-400 font-medium">
+                <span>🛡️ PII Masked (Zero Leak)</span>
+              </div>
+            </div>
+
+            <div class="glass-card p-5">
+              <span class="text-xs text-slate-400 font-medium">Transaksi On-Chain</span>
+              <p class="text-2xl lg:text-3xl font-extrabold text-white mt-1">${totalTx} TX</p>
+              <div class="flex items-center gap-1.5 mt-2 text-xs text-purple-400 font-medium">
+                <span>⚡ Solana Devnet Finalized</span>
+              </div>
+            </div>
+
+            <div class="glass-card p-5">
+              <span class="text-xs text-slate-400 font-medium">Audit Time Latency</span>
+              <p class="text-2xl lg:text-3xl font-extrabold text-white mt-1">&lt; 2.5 Detik</p>
+              <div class="flex items-center gap-1.5 mt-2 text-xs text-brand-400 font-medium">
+                <span>⚡ Trustless Verification</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Instant Audit Search Widget -->
+          <div class="glass-card p-6 sm:p-8 bg-slate-900/80">
+            <div class="max-w-2xl mx-auto text-center space-y-2 mb-6">
+              <h3 class="text-lg font-bold text-white">🔍 Pencarian Status Audit Instan</h3>
+              <p class="text-xs text-slate-400">Masukkan ID Program Beasiswa untuk memverifikasi keabsahan alokasi dan status termin secara real-time tanpa perlu menghubungkan wallet.</p>
+            </div>
+
+            <div class="max-w-xl mx-auto flex flex-col sm:flex-row gap-3">
+              <input type="text" id="landingQuickSearchInput" placeholder="Contoh: BEA-2025-001" 
+                     class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-brand-500 font-mono uppercase">
+              <button onclick="handleLandingQuickSearch()" class="px-6 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm shadow-md transition-all whitespace-nowrap">
+                Verifikasi On-Chain
+              </button>
+            </div>
+
+            <div id="landingQuickSearchResult" class="max-w-xl mx-auto mt-4"></div>
+          </div>
+
+          <!-- 4-Stage Business Workflow Section (Modul 1 User Flow) -->
+          <div class="space-y-6">
+            <div class="text-center max-w-2xl mx-auto">
+              <h3 class="text-xl sm:text-2xl font-bold text-white">Alur Bisnis Utama 4 Tahap (User Flow)</h3>
+              <p class="text-xs sm:text-sm text-slate-400 mt-1">Dirancang berurutan sesuai Bab 3 Modul 1 Keamanan Data dan Blockchain</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div class="glass-card p-5 border-t-4 border-t-blue-500 space-y-2.5">
+                <div class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 font-bold flex items-center justify-center text-sm">
+                  1
+                </div>
+                <h4 class="text-sm font-bold text-white">Inisialisasi & Alokasi</h4>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                  Admin mengunggah daftar penerima, menghasilkan hash SHA-256 batch, dan mengunci alokasi program ke Solana Devnet dengan status <strong class="text-blue-400">Allocated</strong>.
+                </p>
+              </div>
+
+              <div class="glass-card p-5 border-t-4 border-t-amber-500 space-y-2.5">
+                <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-sm">
+                  2
+                </div>
+                <h4 class="text-sm font-bold text-white">Penyaluran & Rilis Termin</h4>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                  Setelah dana fiat ditransfer ke rekening bank mahasiswa, Admin menandatangani transaksi on-chain untuk mengubah status menjadi <strong class="text-amber-400">Released</strong>.
+                </p>
+              </div>
+
+              <div class="glass-card p-5 border-t-4 border-t-brand-500 space-y-2.5">
+                <div class="w-8 h-8 rounded-lg bg-brand-500/20 text-brand-400 font-bold flex items-center justify-center text-sm">
+                  3
+                </div>
+                <h4 class="text-sm font-bold text-white">Konfirmasi Tanda Terima</h4>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                  Mahasiswa memeriksa saldo bank, lalu menandatangani konfirmasi digital tanda terima menggunakan wallet Devnet, mengubah status permanen menjadi <strong class="text-brand-400">Acknowledged</strong>.
+                </p>
+              </div>
+
+              <div class="glass-card p-5 border-t-4 border-t-purple-500 space-y-2.5">
+                <div class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 font-bold flex items-center justify-center text-sm">
+                  4
+                </div>
+                <h4 class="text-sm font-bold text-white">Audit & Verifikasi Publik</h4>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                  Donatur dan publik memantau transparansi data melalui dashboard terbuka dan memverifikasi keabsahan transaksi melalui Solana Explorer tanpa harus connect wallet.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Academic Disclaimer -->
+          <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-xs text-amber-300">
+            <span class="text-lg">⚠️</span>
+            <p class="leading-relaxed">
+              <strong>Catatan Kepatuhan Modul 2 Praktikum:</strong> Fitur blockchain pada web ini merupakan simulasi antarmuka pada lingkungan Solana Devnet (non-custodial dummy data). Sistem tidak meminta private key atau seed phrase asli dan tidak melibatkan dana fiat nyata.
+            </p>
+          </div>
+        </div>
+      `;
+    }
+
+    function handleLandingQuickSearch() {
+      const q = document.getElementById('landingQuickSearchInput').value.trim().toUpperCase();
+      const res = document.getElementById('landingQuickSearchResult');
+      if (!q) {
+        res.innerHTML = `<p class="text-amber-400 text-xs text-center">Silakan masukkan ID Program terlebih dahulu.</p>`;
+        return;
+      }
+
+      const p = APP_STATE.programs.find(x => x.id === q);
+      if (p) {
+        res.innerHTML = `
+          <div class="p-4 rounded-xl bg-slate-950 border border-brand-500/40 text-xs space-y-2 animate-fadeSlideIn">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-white text-sm">${p.nama}</span>
+              ${getStatusBadge(p.status)}
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-slate-300 pt-1">
+              <div>ID Program: <span class="font-mono text-brand-300">${p.id}</span></div>
+              <div>Alokasi: <span class="font-semibold text-white">${p.totalDana}</span></div>
+              <div>Jumlah Penerima: <span class="text-white">${p.penerimaCount} Mahasiswa</span></div>
+              <div>Termin: <span class="text-white">Termin ${p.currentTermin} dari ${p.totalTermin}</span></div>
+            </div>
+            <div class="pt-2 border-t border-slate-800 text-[11px] text-slate-400 font-mono truncate">
+              SHA-256 Batch: <span class="text-brand-300">${p.batchHash}</span>
+            </div>
+            <div class="pt-1 flex justify-end">
+              <button onclick="navigate('verify-explorer')" class="text-brand-400 hover:underline font-semibold">
+                Buka Detail Verifikasi Lengkap →
+              </button>
+            </div>
+          </div>
+        `;
+      } else {
+        res.innerHTML = `
+          <div class="p-4 rounded-xl bg-slate-950 border border-red-500/40 text-xs text-center text-red-400 animate-fadeSlideIn">
+            ❌ ID Program "${q}" tidak ditemukan dalam data simulasi on-chain. Coba: <strong>BEA-2025-001</strong>
+          </div>
+        `;
+      }
+    }
+
+    // =========================================================================
+    // PAGE 2: DASHBOARD ADMIN
+    // =========================================================================
+    function renderAdminDashboardPage(c) {
+      const allocated = APP_STATE.programs.filter(p => p.status === 'Allocated').length;
+      const released = APP_STATE.programs.filter(p => p.status === 'Released').length;
+      const ack = APP_STATE.programs.filter(p => p.status === 'Acknowledged').length;
+      const totalProg = APP_STATE.programs.length;
+
+      c.innerHTML = `
+        <div class="space-y-6">
+          <!-- Page Header -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+            <div>
+              <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                <span>📊 Dashboard Admin Kampus</span>
+                <span class="text-xs px-2.5 py-0.5 rounded-full bg-brand-500/20 text-brand-300 font-mono">Issuer Authority</span>
+              </h2>
+              <p class="text-xs text-slate-400 mt-1">Pemantauan penyaluran beasiswa, rilis termin dana, dan audit on-chain</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="navigate('admin-programs')" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-md transition-all flex items-center gap-1.5">
+                <span>+ Alokasi Beasiswa Baru</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- KPI Cards -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="glass-card p-5 border-l-4 border-l-brand-500">
+              <span class="text-xs text-slate-400 font-medium">Total Program Beasiswa</span>
+              <p class="text-2xl font-extrabold text-white mt-1">${totalProg} Program</p>
+              <p class="text-[11px] text-brand-400 mt-1">Aktif di Semester Ini</p>
+            </div>
+
+            <div class="glass-card p-5 border-l-4 border-l-blue-500">
+              <span class="text-xs text-slate-400 font-medium">Status: Allocated</span>
+              <p class="text-2xl font-extrabold text-blue-400 mt-1">${allocated} Program</p>
+              <p class="text-[11px] text-slate-400 mt-1">Menunggu Penyaluran Fiat</p>
+            </div>
+
+            <div class="glass-card p-5 border-l-4 border-l-amber-500">
+              <span class="text-xs text-slate-400 font-medium">Status: Released</span>
+              <p class="text-2xl font-extrabold text-amber-400 mt-1">${released} Program</p>
+              <p class="text-[11px] text-slate-400 mt-1">Menunggu Tanda Terima Mhs</p>
+            </div>
+
+            <div class="glass-card p-5 border-l-4 border-l-emerald-500">
+              <span class="text-xs text-slate-400 font-medium">Status: Acknowledged</span>
+              <p class="text-2xl font-extrabold text-emerald-400 mt-1">${ack} Program</p>
+              <p class="text-[11px] text-slate-400 mt-1">Selesai Dikonfirmasi</p>
+            </div>
+          </div>
+
+          <!-- Charts Row -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Distribution Progress Bar Chart -->
+            <div class="glass-card p-6 space-y-4">
+              <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-white">📊 Rasio Status Program Beasiswa</h3>
+                <span class="text-xs text-slate-400 font-mono">Total: ${totalProg}</span>
+              </div>
+              
+              <div class="space-y-3 pt-2">
+                <div>
+                  <div class="flex justify-between text-xs mb-1">
+                    <span class="text-slate-300">Allocated (Terdaftar)</span>
+                    <span class="text-blue-400 font-semibold">${allocated} (${Math.round((allocated/totalProg)*100)}%)</span>
+                  </div>
+                  <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
+                    <div class="bg-blue-500 h-full rounded-full transition-all duration-500" style="width: ${(allocated/totalProg)*100}%"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex justify-between text-xs mb-1">
+                    <span class="text-slate-300">Released (Dana Ditransfer)</span>
+                    <span class="text-amber-400 font-semibold">${released} (${Math.round((released/totalProg)*100)}%)</span>
+                  </div>
+                  <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
+                    <div class="bg-amber-500 h-full rounded-full transition-all duration-500" style="width: ${(released/totalProg)*100}%"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex justify-between text-xs mb-1">
+                    <span class="text-slate-300">Acknowledged (Diterima Mhs)</span>
+                    <span class="text-emerald-400 font-semibold">${ack} (${Math.round((ack/totalProg)*100)}%)</span>
+                  </div>
+                  <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
+                    <div class="bg-brand-500 h-full rounded-full transition-all duration-500" style="width: ${(ack/totalProg)*100}%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Monthly Activity Mock Chart -->
+            <div class="glass-card p-6 space-y-4">
+              <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-white">📈 Frekuensi Transaksi On-Chain per Bulan</h3>
+                <span class="text-xs text-slate-400 font-mono">Devnet Slot Feed</span>
+              </div>
+
+              <div class="flex items-end justify-between gap-3 h-36 pt-4 px-2">
+                ${[
+                  { m: 'Mei', val: 8, max: 25 },
+                  { m: 'Jun', val: 12, max: 25 },
+                  { m: 'Jul', val: 15, max: 25 },
+                  { m: 'Agu', val: 22, max: 25 },
+                  { m: 'Sep', val: 19, max: 25 },
+                  { m: 'Okt', val: 25, max: 25 }
+                ].map(item => `
+                  <div class="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+                    <span class="text-[10px] font-mono text-slate-300">${item.val}</span>
+                    <div class="w-full rounded-t-md bg-gradient-to-t from-brand-700 to-brand-400 hover:from-brand-600 hover:to-brand-300 transition-all cursor-pointer"
+                         style="height: ${(item.val / item.max) * 100}%"></div>
+                    <span class="text-[11px] text-slate-400 font-medium">${item.m}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Action Table: Programs Requiring Action -->
+          <div class="glass-card overflow-hidden">
+            <div class="p-5 border-b border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-bold text-white">📋 Daftar Operasional Program Beasiswa</h3>
+                <p class="text-xs text-slate-400">Klik aksi "Rilis Termin" untuk menandatangani pencatatan termin ke Solana Devnet</p>
+              </div>
+              <button onclick="navigate('admin-programs')" class="text-xs text-brand-400 hover:underline font-semibold">
+                Lihat Semua (${totalProg}) →
+              </button>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-slate-900/80 text-slate-400 font-mono uppercase text-[11px]">
+                  <tr>
+                    <th class="px-5 py-3">ID Program</th>
+                    <th class="px-5 py-3">Nama Program</th>
+                    <th class="px-5 py-3">Alokasi Dana</th>
+                    <th class="px-5 py-3">Penerima</th>
+                    <th class="px-5 py-3">Termin Aktif</th>
+                    <th class="px-5 py-3">Status</th>
+                    <th class="px-5 py-3 text-right">Aksi On-Chain</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800">
+                  ${APP_STATE.programs.map(p => `
+                    <tr class="hover:bg-slate-800/40 transition-colors">
+                      <td class="px-5 py-3.5 font-mono text-brand-300 font-semibold">${p.id}</td>
+                      <td class="px-5 py-3.5 text-white font-medium">${p.nama}</td>
+                      <td class="px-5 py-3.5 text-slate-300 font-mono">${p.totalDana}</td>
+                      <td class="px-5 py-3.5 text-slate-300">${p.penerimaCount} Mhs</td>
+                      <td class="px-5 py-3.5 text-slate-300 font-mono">Termin ${p.currentTermin}/${p.totalTermin}</td>
+                      <td class="px-5 py-3.5">${getStatusBadge(p.status)}</td>
+                      <td class="px-5 py-3.5 text-right">
+                        ${p.status === 'Allocated' ? `
+                          <button onclick="executeAdminReleaseTermin('${p.id}')" class="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-semibold transition-all">
+                            ⚡ Rilis Termin ${p.currentTermin}
+                          </button>
+                        ` : p.status === 'Released' ? `
+                          <span class="text-[11px] text-amber-400/80 italic">Menunggu Tanda Terima Mhs</span>
+                        ` : `
+                          <span class="text-[11px] text-brand-400 font-medium">✓ Selesai Terdistribusi</span>
+                        `}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // PAGE 3: ADMIN KELOLA BEASISWA & FORM ALOKASI
+    // =========================================================================
+    function renderAdminProgramsPage(c) {
+      c.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+            <div>
+              <h2 class="text-xl sm:text-2xl font-bold text-white">📋 Kelola & Alokasi Beasiswa Baru</h2>
+              <p class="text-xs text-slate-400 mt-1">Inisialisasi akun program on-chain dan pembagian jadwal termin</p>
+            </div>
+            <button onclick="navigate('hash-generator')" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all">
+              <span>🔐 Buka Generator Batch SHA-256</span>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Form Alokasi Baru -->
+            <div class="lg:col-span-1 glass-card p-6 space-y-4">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span>📝 Form Alokasi Program Baru</span>
+              </h3>
+
+              <div class="space-y-3.5 text-xs">
+                <div>
+                  <label class="text-slate-300 font-medium block mb-1">Nama Program Beasiswa <span class="text-red-400">*</span></label>
+                  <input type="text" id="fProgName" placeholder="Contoh: Beasiswa Talenta Riset 2025" 
+                         class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-brand-500">
+                </div>
+
+                <div>
+                  <label class="text-slate-300 font-medium block mb-1">ID Unik Program <span class="text-red-400">*</span></label>
+                  <input type="text" id="fProgId" placeholder="Contoh: BEA-2025-008" 
+                         class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono uppercase focus:outline-none focus:border-brand-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="text-slate-300 font-medium block mb-1">Total Dana (Rp)</label>
+                    <input type="text" id="fProgDana" placeholder="100.000.000" 
+                           class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-brand-500">
+                  </div>
+                  <div>
+                    <label class="text-slate-300 font-medium block mb-1">Jumlah Penerima</label>
+                    <input type="number" id="fProgPenerima" placeholder="20" min="1" 
+                           class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-brand-500">
+                  </div>
+                </div>
+
+                <div>
+                  <label class="text-slate-300 font-medium block mb-1">Jumlah Termin Pencairan</label>
+                  <select id="fProgTermin" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-brand-500">
+                    <option value="2">2 Termin (Semesteran)</option>
+                    <option value="3" selected>3 Termin (Bertahap)</option>
+                    <option value="4">4 Termin (Kuartalan)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="text-slate-300 font-medium block mb-1">Deskripsi Singkat</label>
+                  <textarea id="fProgDesc" rows="2" placeholder="Tujuan program beasiswa..." 
+                            class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-brand-500"></textarea>
+                </div>
+
+                <button onclick="handleFormTambahProgram()" class="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold shadow-md shadow-brand-700/20 transition-all flex items-center justify-center gap-1.5">
+                  <span>🚀 Inisialisasi Program On-Chain</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Program List Table -->
+            <div class="lg:col-span-2 glass-card p-6 space-y-4">
+              <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-white">Daftar Seluruh Program Beasiswa (${APP_STATE.programs.length})</h3>
+                <span class="text-xs text-brand-400 font-mono">Status Terkunci di Solana</span>
+              </div>
+
+              <div class="space-y-3">
+                ${APP_STATE.programs.map(p => `
+                  <div class="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2.5 hover:border-slate-700 transition-all">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div class="flex items-center gap-2">
+                        <span class="font-mono text-brand-300 font-bold text-xs">${p.id}</span>
+                        <span class="text-xs font-semibold text-white">${p.nama}</span>
+                      </div>
+                      <div>${getStatusBadge(p.status)}</div>
+                    </div>
+
+                    <p class="text-xs text-slate-400 leading-relaxed">${p.deskripsi}</p>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] pt-2 border-t border-slate-800/80 text-slate-300">
+                      <div>Alokasi: <span class="font-semibold text-white font-mono">${p.totalDana}</span></div>
+                      <div>Penerima: <span class="text-white">${p.penerimaCount} Mhs</span></div>
+                      <div>Termin: <span class="text-white">${p.currentTermin} / ${p.totalTermin}</span></div>
+                      <div>Tanggal: <span class="text-white">${p.tanggalAlokasi}</span></div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 text-[11px]">
+                      <span class="font-mono text-slate-500 truncate sm:max-w-md">SHA-256: ${p.batchHash}</span>
+                      <div class="flex items-center gap-2 shrink-0">
+                        ${p.status === 'Allocated' ? `
+                          <button onclick="executeAdminReleaseTermin('${p.id}')" class="px-3 py-1 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition-all">
+                            Rilis Termin ${p.currentTermin} →
+                          </button>
+                        ` : `
+                          <button onclick="openTxInspector('${p.batchHash}')" class="text-brand-400 hover:underline font-mono">
+                            Cek Audit →
+                          </button>
+                        `}
+                      </div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function handleFormTambahProgram() {
+      const nama = document.getElementById('fProgName').value.trim();
+      const id = document.getElementById('fProgId').value.trim().toUpperCase();
+      const dana = document.getElementById('fProgDana').value.trim() || '100.000.000';
+      const penerima = parseInt(document.getElementById('fProgPenerima').value) || 20;
+      const termin = parseInt(document.getElementById('fProgTermin').value) || 3;
+      const desc = document.getElementById('fProgDesc').value.trim() || 'Program beasiswa pendidikan berkelanjutan.';
+
+      if (!nama || !id) {
+        showToast('Nama dan ID Program wajib diisi!', 'error');
+        return;
+      }
+
+      if (APP_STATE.programs.find(p => p.id === id)) {
+        showToast('ID Program sudah ada, gunakan kode ID unik!', 'error');
+        return;
+      }
+
+      // Generate authentic SHA-256 hash using Web Crypto API
+      const generatedHash = await calculateRealSHA256(id + nama + Date.now());
+      const txSig = generateDummySolSignature();
+
+      const newProg = {
+        id,
+        nama,
+        kategori: 'Umum Kampus',
+        totalDana: 'Rp ' + dana,
+        danaRaw: 100000000,
+        penerimaCount: penerima,
+        totalTermin: termin,
+        currentTermin: 1,
+        status: 'Allocated',
+        batchHash: generatedHash,
+        tanggalAlokasi: new Date().toISOString().slice(0, 10),
+        adminWallet: APP_STATE.wallet.publicKey,
+        deskripsi: desc
+      };
+
+      APP_STATE.programs.unshift(newProg);
+
+      // Append transaction to audit logs
+      APP_STATE.auditLogs.unshift({
+        txId: txSig,
+        programId: id,
+        terminNo: 1,
+        aksi: `Alokasi Program Baru: ${nama}`,
+        aktorRole: 'Admin Kampus (Issuer)',
+        aktorWallet: APP_STATE.wallet.publicKey,
+        status: 'Allocated',
+        slot: APP_STATE.clusterSlot,
+        timestamp: new Date().toLocaleString('id-ID') + ' WIB',
+        fee: '0.000005 SOL',
+        signature: txSig,
+        memo: JSON.stringify({
+          action: 'ALLOCATE_PROGRAM',
+          programId: id,
+          batchHash: generatedHash,
+          penerima: penerima,
+          terminCount: termin
+        })
+      });
+
+      showToast(`Program "${nama}" berhasil dialokasikan di Solana Devnet!`, 'success');
+      renderAdminProgramsPage(document.getElementById('mainAppViewport'));
+    }
+
+    async function executeAdminReleaseTermin(programId) {
+      const prog = APP_STATE.programs.find(p => p.id === programId);
+      if (!prog) return;
+
+      const txSig = generateDummySolSignature();
+      prog.status = 'Released';
+
+      // Update student profile as well if matched
+      APP_STATE.mahasiswa.forEach(m => {
+        if (m.programId === programId) {
+          if (prog.currentTermin === 1) m.termin1.status = 'Released';
+          else if (prog.currentTermin === 2) m.termin2.status = 'Released';
+        }
+      });
+
+      APP_STATE.auditLogs.unshift({
+        txId: txSig,
+        programId: prog.id,
+        terminNo: prog.currentTermin,
+        aksi: `Rilis Termin ${prog.currentTermin}: ${prog.nama}`,
+        aktorRole: 'Admin Kampus (Issuer)',
+        aktorWallet: APP_STATE.wallet.publicKey,
+        status: 'Released',
+        slot: APP_STATE.clusterSlot,
+        timestamp: new Date().toLocaleString('id-ID') + ' WIB',
+        fee: '0.000005 SOL',
+        signature: txSig,
+        memo: JSON.stringify({
+          action: 'RELEASE_TERMIN',
+          programId: prog.id,
+          termin: prog.currentTermin,
+          batchHash: prog.batchHash
+        })
+      });
+
+      showToast(`Termin ${prog.currentTermin} untuk ${prog.id} telah dirilis on-chain!`, 'success');
+      renderCurrentPage();
+    }
+
+    // =========================================================================
+    // PAGE 4: DAFTAR PENERIMA (MASKED DATA - ZERO PII)
+    // =========================================================================
+    function renderAdminBeneficiariesPage(c) {
+      c.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+            <div>
+              <h2 class="text-xl sm:text-2xl font-bold text-white">👥 Daftar Mahasiswa Penerima</h2>
+              <p class="text-xs text-slate-400 mt-1">Data identitas dilindungi enkripsi off-chain & masked sesuai standar privasi PDP</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs px-3 py-1 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/30 font-medium">
+                🛡️ Zero-Data-Leakage Policy
+              </span>
+            </div>
+          </div>
+
+          <div class="glass-card overflow-hidden">
+            <div class="p-5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="flex items-center gap-2">
+                <input type="text" id="filterBeneficiaryInput" oninput="filterBeneficiariesTable()" placeholder="Cari nama hash atau wallet..." 
+                       class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500 sm:w-64">
+              </div>
+              <span class="text-xs text-slate-400">Total Terdata: ${APP_STATE.mahasiswa.length} Mahasiswa</span>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-slate-900/80 text-slate-400 font-mono uppercase text-[11px]">
+                  <tr>
+                    <th class="px-5 py-3">ID Mhs</th>
+                    <th class="px-5 py-3">Nama (Masked PII)</th>
+                    <th class="px-5 py-3">NIM Terenkripsi</th>
+                    <th class="px-5 py-3">Program Beasiswa</th>
+                    <th class="px-5 py-3">Public Key Solana</th>
+                    <th class="px-5 py-3">Termin 1</th>
+                    <th class="px-5 py-3">Termin 2</th>
+                    <th class="px-5 py-3">Termin 3</th>
+                    <th class="px-5 py-3 text-right">Total Diterima</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800" id="beneficiaryTableBody">
+                  ${renderBeneficiaryRows(APP_STATE.mahasiswa)}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- PDP Policy Info Banner -->
+          <div class="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30 text-xs text-blue-300 space-y-1">
+            <p class="font-bold flex items-center gap-1.5">
+              <span>🔒 Kepatuhan Privasi Modul 1 (Bagian 4):</span>
+            </p>
+            <p>Data identitas sensitif (Nama lengkap, NIK, No Rekening, dan SKTM) disimpan di database terisolasi (off-chain). Blockchain Solana Devnet hanya menyimpan Public Key dan hash verifikasi tanda tangan digital.</p>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderBeneficiaryRows(list) {
+      return list.map(m => `
+        <tr class="hover:bg-slate-800/40 transition-colors">
+          <td class="px-5 py-3.5 font-mono text-brand-300 font-semibold">${m.id}</td>
+          <td class="px-5 py-3.5 text-white font-medium">${m.namaMasked}</td>
+          <td class="px-5 py-3.5 text-slate-400 font-mono">${m.nimMasked}</td>
+          <td class="px-5 py-3.5 text-slate-300 font-mono">${m.programId}</td>
+          <td class="px-5 py-3.5 font-mono text-slate-400">${formatShortKey(m.wallet, 4, 4)}</td>
+          <td class="px-5 py-3.5">${m.termin1 ? getStatusBadge(m.termin1.status) : '—'}</td>
+          <td class="px-5 py-3.5">${m.termin2 ? getStatusBadge(m.termin2.status) : '—'}</td>
+          <td class="px-5 py-3.5">${m.termin3 ? getStatusBadge(m.termin3.status) : '—'}</td>
+          <td class="px-5 py-3.5 text-right font-mono text-brand-300 font-bold">${m.totalDiterima}</td>
+        </tr>
+      `).join('');
+    }
+
+    function filterBeneficiariesTable() {
+      const q = document.getElementById('filterBeneficiaryInput').value.toLowerCase();
+      const filtered = APP_STATE.mahasiswa.filter(m => 
+        m.id.toLowerCase().includes(q) || 
+        m.namaMasked.toLowerCase().includes(q) || 
+        m.wallet.toLowerCase().includes(q) ||
+        m.programId.toLowerCase().includes(q)
+      );
+      document.getElementById('beneficiaryTableBody').innerHTML = renderBeneficiaryRows(filtered);
+    }
+
+    // =========================================================================
+    // PAGE 5: SHA-256 BATCH GENERATOR (CRYPTO NATIVE)
+    // =========================================================================
+    function renderHashGeneratorPage(c) {
+      c.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+            <div>
+              <h2 class="text-xl sm:text-2xl font-bold text-white">🔐 SHA-256 Batch Generator</h2>
+              <p class="text-xs text-slate-400 mt-1">Menggunakan Web Crypto API asli browser untuk menghasilkan hash kriptografis daftar penerima</p>
+            </div>
+            <span class="text-xs font-mono text-brand-300 bg-brand-500/10 px-3 py-1 rounded-full border border-brand-500/30">
+              crypto.subtle.digest('SHA-256')
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="glass-card p-6 space-y-4">
+              <h3 class="text-sm font-bold text-white">Input Daftar Mahasiswa Penerima</h3>
+              <p class="text-xs text-slate-400">Masukkan daftar baris (Nama / ID Mahasiswa) untuk dihitung hash individual dan Merkle Root batch:</p>
+
+              <textarea id="hashInputText" rows="6" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white font-mono focus:outline-none focus:border-brand-500" placeholder="Aulia Rachman - G.231.24.0065&#10;Dian Pratama - G.231.24.0012&#10;Fajar Nugraha - G.231.24.0088&#10;Siti Nurhaliza - G.231.23.0041">Aulia Rachman - G.231.24.0065
+Dian Pratama - G.231.24.0012
+Fajar Nugraha - G.231.24.0088
+Siti Nurhaliza - G.231.23.0041</textarea>
+
+              <button onclick="handleExecuteBatchHash()" class="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs transition-all shadow-md flex items-center justify-center gap-2">
+                <span>⚡ Eksekusi Komputasi Hash Kriptografis</span>
+              </button>
+            </div>
+
+            <div class="glass-card p-6 space-y-4">
+              <h3 class="text-sm font-bold text-white">Hasil Hash On-Chain (Tamper-Proof)</h3>
+              <div id="hashResultContainer" class="space-y-3 text-xs font-mono">
+                <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 text-center">
+                  Klik tombol eksekusi untuk menghasilkan hash SHA-256.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function handleExecuteBatchHash() {
+      const text = document.getElementById('hashInputText').value.trim();
+      const container = document.getElementById('hashResultContainer');
+      if (!text) {
+        showToast('Masukkan minimal satu baris data!', 'error');
+        return;
+      }
+
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      const start = performance.now();
+
+      const hashes = [];
+      for (const line of lines) {
+        const h = await calculateRealSHA256(line);
+        hashes.push({ line, hash: h });
+      }
+
+      // Calculate Merkle batch root
+      const combined = hashes.map(h => h.hash).join('');
+      const batchMerkle = await calculateRealSHA256(combined);
+      const latency = (performance.now() - start).toFixed(2);
+
+      container.innerHTML = `
+        <div class="p-3.5 rounded-xl bg-brand-500/10 border border-brand-500/30 text-brand-300 space-y-1">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="font-bold">✓ Batch Digest Berhasil:</span>
+            <span>${latency} ms</span>
+          </div>
+          <p class="font-mono text-xs break-all select-all text-white font-bold">${batchMerkle}</p>
+        </div>
+
+        <p class="text-slate-400 text-[11px] font-sans">Hash Daun Individual (${lines.length} Baris):</p>
+        <div class="max-h-48 overflow-y-auto space-y-2 pr-1">
+          ${hashes.map((item, idx) => `
+            <div class="p-2.5 rounded bg-slate-950 border border-slate-800 text-[11px]">
+              <span class="text-slate-400 block font-sans">#${idx + 1}: ${item.line}</span>
+              <span class="text-emerald-400 break-all select-all">${item.hash}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      showToast(`Batch Hash ${lines.length} penerima berhasil dihitung!`, 'success');
+    }
+
+    // =========================================================================
+    // PAGE 6: PORTAL MAHASISWA (BENEFICIARY)
+    // =========================================================================
+    function renderStudentPortalPage(c) {
+      // Find default student data
+      const student = APP_STATE.mahasiswa[0];
+      const prog = APP_STATE.programs.find(p => p.id === student.programId);
+
+      c.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+            <div>
+              <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                <span>🎓 Portal Mahasiswa Penerima</span>
+                <span class="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-mono">Beneficiary Mode</span>
+              </h2>
+              <p class="text-xs text-slate-400 mt-1">Status hak beasiswa dan penandatanganan konfirmasi tanda terima dana</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 font-mono">
+                ID: ${student.id}
+              </span>
+            </div>
+          </div>
+
+          <!-- Student Welcome Banner -->
+          <div class="glass-card p-6 border-l-4 border-l-brand-500 bg-gradient-to-r from-slate-900 via-slate-900/90 to-brand-950/20">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span class="text-xs text-brand-400 font-semibold uppercase tracking-wider">Penerima Manfaat Terdaftar</span>
+                <h3 class="text-lg sm:text-xl font-bold text-white mt-1">${student.namaMasked}</h3>
+                <p class="text-xs text-slate-400 mt-0.5">NIM: <span class="font-mono text-slate-300">${student.nimMasked}</span> • ${student.bankTujuan}</p>
+              </div>
+              <div class="text-left sm:text-right">
+                <span class="text-xs text-slate-400 block">Total Dana Terkonfirmasi</span>
+                <span class="text-2xl font-extrabold text-brand-400 font-mono">${student.totalDiterima}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Active Program & Stepper -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Program Detail Card -->
+            <div class="glass-card p-6 space-y-4 lg:col-span-1">
+              <h3 class="text-sm font-bold text-white">📋 Program Beasiswa Anda</h3>
+              <div class="space-y-3 text-xs">
+                <div>
+                  <span class="text-slate-400 block">Nama Program:</span>
+                  <span class="text-white font-semibold">${prog ? prog.nama : student.programId}</span>
+                </div>
+                <div>
+                  <span class="text-slate-400 block">ID Program On-Chain:</span>
+                  <span class="font-mono text-brand-300">${student.programId}</span>
+                </div>
+                <div>
+                  <span class="text-slate-400 block">Wallet Anda:</span>
+                  <span class="font-mono text-slate-300 break-all">${student.wallet}</span>
+                </div>
+                <div>
+                  <span class="text-slate-400 block">Rekening Penyaluran:</span>
+                  <span class="text-slate-300">${student.bankTujuan}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Milestone Stepper & Signing Action -->
+            <div class="glass-card p-6 space-y-6 lg:col-span-2">
+              <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-white">📍 Status Milestone Termin Beasiswa</h3>
+                <span class="text-xs text-slate-400">Total 3 Termin</span>
+              </div>
+
+              <!-- Visual Stepper Progress -->
+              <div class="flex items-center justify-between relative py-2">
+                <!-- Stepper Connecting Line -->
+                <div class="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-1 bg-slate-800 z-0"></div>
+
+                <!-- Termin 1 -->
+                <div class="relative z-10 flex flex-col items-center text-center">
+                  <div class="w-10 h-10 rounded-full bg-brand-500 text-white font-bold flex items-center justify-center text-sm shadow-lg shadow-brand-500/30">
+                    ✓
+                  </div>
+                  <span class="text-xs font-semibold text-white mt-2">Termin 1</span>
+                  <span class="text-[10px] text-brand-400 font-medium">Acknowledged</span>
+                </div>
+
+                <!-- Termin 2 -->
+                <div class="relative z-10 flex flex-col items-center text-center">
+                  <div class="w-10 h-10 rounded-full ${student.termin2.status === 'Acknowledged' ? 'bg-brand-500 text-white' : 'bg-amber-500 text-slate-950 font-bold animate-pulse'} flex items-center justify-center text-sm shadow-lg">
+                    ${student.termin2.status === 'Acknowledged' ? '✓' : '2'}
+                  </div>
+                  <span class="text-xs font-semibold text-white mt-2">Termin 2</span>
+                  <span class="text-[10px] ${student.termin2.status === 'Acknowledged' ? 'text-brand-400' : 'text-amber-400 font-bold'}">
+                    ${student.termin2.status}
+                  </span>
+                </div>
+
+                <!-- Termin 3 -->
+                <div class="relative z-10 flex flex-col items-center text-center">
+                  <div class="w-10 h-10 rounded-full bg-slate-800 text-slate-400 font-bold flex items-center justify-center text-sm border border-slate-700">
+                    3
+                  </div>
+                  <span class="text-xs font-semibold text-slate-400 mt-2">Termin 3</span>
+                  <span class="text-[10px] text-slate-500">Allocated</span>
+                </div>
+              </div>
+
+              <!-- Interactive Confirmation Action Box -->
+              <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                ${student.termin2.status === 'Released' ? `
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                        Termin 2 Siap Dikonfirmasi Mahasiswa
+                      </p>
+                      <p class="text-[11px] text-slate-400 mt-0.5">Dana termin 2 (Rp 2.000.000) telah dirilis oleh Admin ke rekening Anda. Silakan tandatangani bukti konfirmasi.</p>
+                    </div>
+                  </div>
+                  <button onclick="executeStudentAcknowledgeGrant()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-semibold text-xs transition-all shadow-lg shadow-brand-700/25 flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>Tanda Tangani Konfirmasi Penerimaan (Wallet Signature)</span>
+                  </button>
+                ` : `
+                  <div class="text-center py-2 text-xs text-brand-400 flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    <span class="font-semibold">Semua termin yang dirilis telah selesai Anda konfirmasi.</span>
+                  </div>
+                `}
+              </div>
+            </div>
+          </div>
+
+          <!-- Termin History Table -->
+          <div class="glass-card overflow-hidden">
+            <div class="p-5 border-b border-slate-800 flex items-center justify-between">
+              <h3 class="text-sm font-bold text-white">📜 Riwayat Termin & Bukti Solana Explorer</h3>
+              <span class="text-xs text-slate-400 font-mono">cluster=devnet</span>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-slate-900/80 text-slate-400 font-mono uppercase text-[11px]">
+                  <tr>
+                    <th class="px-5 py-3">Termin</th>
+                    <th class="px-5 py-3">Jumlah Dana</th>
+                    <th class="px-5 py-3">Status</th>
+                    <th class="px-5 py-3">Tanggal</th>
+                    <th class="px-5 py-3">Bukti Hash / Signature</th>
+                    <th class="px-5 py-3 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800">
+                  <tr class="hover:bg-slate-800/40">
+                    <td class="px-5 py-3.5 font-bold text-white">Termin 1</td>
+                    <td class="px-5 py-3.5 font-mono text-slate-200">Rp 2.000.000</td>
+                    <td class="px-5 py-3.5">${getStatusBadge(student.termin1.status)}</td>
+                    <td class="px-5 py-3.5 text-slate-400">${student.termin1.date}</td>
+                    <td class="px-5 py-3.5 font-mono text-brand-300">${student.termin1.sig}</td>
+                    <td class="px-5 py-3.5 text-right">
+                      <button onclick="openTxInspector('${student.termin1.sig}')" class="text-brand-400 hover:underline">
+                        Lihat TX →
+                      </button>
+                    </td>
+                  </tr>
+
+                  <tr class="hover:bg-slate-800/40">
+                    <td class="px-5 py-3.5 font-bold text-white">Termin 2</td>
+                    <td class="px-5 py-3.5 font-mono text-slate-200">Rp 2.000.000</td>
+                    <td class="px-5 py-3.5">${getStatusBadge(student.termin2.status)}</td>
+                    <td class="px-5 py-3.5 text-slate-400">${student.termin2.date}</td>
+                    <td class="px-5 py-3.5 font-mono text-brand-300">${student.termin2.sig || '—'}</td>
+                    <td class="px-5 py-3.5 text-right">
+                      ${student.termin2.sig ? `
+                        <button onclick="openTxInspector('${student.termin2.sig}')" class="text-brand-400 hover:underline">
+                          Lihat TX →
+                        </button>
+                      ` : `
+                        <span class="text-slate-500">—</span>
+                      `}
+                    </td>
+                  </tr>
+
+                  <tr class="hover:bg-slate-800/40 text-slate-500">
+                    <td class="px-5 py-3.5 font-bold text-slate-400">Termin 3</td>
+                    <td class="px-5 py-3.5 font-mono">Rp 2.000.000</td>
+                    <td class="px-5 py-3.5">${getStatusBadge('Allocated')}</td>
+                    <td class="px-5 py-3.5">Menunggu Jadwal</td>
+                    <td class="px-5 py-3.5 font-mono">—</td>
+                    <td class="px-5 py-3.5 text-right">—</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function executeStudentAcknowledgeGrant() {
+      const student = APP_STATE.mahasiswa[0];
+      const txSig = generateDummySolSignature();
+
+      student.termin2.status = 'Acknowledged';
+      student.termin2.sig = txSig;
+      student.totalDiterima = 'Rp 4.000.000';
+
+      // Record to audit logs
+      APP_STATE.auditLogs.unshift({
+        txId: txSig,
+        programId: student.programId,
+        terminNo: 2,
+        aksi: `Konfirmasi Penerimaan Dana Termin 2 (${student.id})`,
+        aktorRole: 'Mahasiswa (Beneficiary)',
+        aktorWallet: student.wallet,
+        status: 'Acknowledged',
+        slot: APP_STATE.clusterSlot,
+        timestamp: new Date().toLocaleString('id-ID') + ' WIB',
+        fee: '0.000005 SOL',
+        signature: txSig,
+        memo: JSON.stringify({
+          action: 'ACKNOWLEDGE_GRANT',
+          beneficiaryId: student.id,
+          programId: student.programId,
+          termin: 2,
+          amount: 'Rp 2.000.000'
+        })
+      });
+
+      showToast('Konfirmasi penerimaan berhasil ditandatangani di Solana Devnet!', 'success');
+      renderStudentPortalPage(document.getElementById('mainAppViewport'));
+    }
+
+    // =========================================================================
+    // PAGE 7: DASHBOARD AUDIT PUBLIK & TRANSAKSI FEED
+    // =========================================================================
+    function renderPublicDashboardPage(c) {
+      const totalDana = APP_STATE.programs.reduce((acc, p) => acc + p.danaRaw, 0);
+      const totalMhs = APP_STATE.programs.reduce((acc, p) => acc + p.penerimaCount, 0);
+
+      c.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+            <div>
+              <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                <span>🌐 Dashboard Transparansi Publik</span>
+                <span class="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-mono">Observer Mode</span>
+              </h2>
+              <p class="text-xs text-slate-400 mt-1">Akses audit publik tanpa harus menghubungkan wallet untuk donatur & verifier independen</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-mono px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-brand-300">
+                Solana Explorer Connected
+              </span>
+            </div>
+          </div>
+
+          <!-- Public Stat Cards -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="glass-card p-5 border-t-2 border-t-brand-500">
+              <span class="text-xs text-slate-400 font-medium">Total Dana Tersalurkan</span>
+              <p class="text-2xl font-extrabold text-white mt-1">Rp ${(totalDana / 1000000).toLocaleString('id-ID')} Jt</p>
+              <p class="text-[11px] text-brand-400 mt-1">100% Diaudit On-Chain</p>
+            </div>
+
+            <div class="glass-card p-5 border-t-2 border-t-blue-500">
+              <span class="text-xs text-slate-400 font-medium">Mahasiswa Tercover</span>
+              <p class="text-2xl font-extrabold text-blue-400 mt-1">${totalMhs} Orang</p>
+              <p class="text-[11px] text-slate-400 mt-1">Tersebar di 5 Program</p>
+            </div>
+
+            <div class="glass-card p-5 border-t-2 border-t-amber-500">
+              <span class="text-xs text-slate-400 font-medium">Log Transaksi Devnet</span>
+              <p class="text-2xl font-extrabold text-amber-400 mt-1">${APP_STATE.auditLogs.length} TX</p>
+              <p class="text-[11px] text-slate-400 mt-1">Tamper-Proof Ledger</p>
+            </div>
+
+            <div class="glass-card p-5 border-t-2 border-t-purple-500">
+              <span class="text-xs text-slate-400 font-medium">Koneksi Wallet Diperlukan</span>
+              <p class="text-2xl font-extrabold text-purple-400 mt-1">TIDAK</p>
+              <p class="text-[11px] text-slate-400 mt-1">Publik Bebas Memeriksa</p>
+            </div>
+          </div>
+
+          <!-- Live Feed Preview -->
+          <div class="glass-card p-6 space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-bold text-white">📜 Aktivitas Penyaluran Terakhir (Real-Time Feed)</h3>
+                <p class="text-xs text-slate-400">Klik baris transaksi untuk membuka rincian instruksi on-chain</p>
+              </div>
+              <button onclick="navigate('public-audit')" class="text-xs text-brand-400 hover:underline font-semibold">
+                Buka Log Penuh (${APP_STATE.auditLogs.length}) →
+              </button>
+            </div>
+
+            <div class="space-y-2.5">
+              ${APP_STATE.auditLogs.slice(0, 4).map(l => `
+                <div onclick="openTxInspector('${l.signature}')" class="p-3.5 rounded-xl bg-slate-900/80 hover:bg-slate-800/80 border border-slate-800 hover:border-slate-700 cursor-pointer transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-xs font-mono text-brand-300">
+                      TX
+                    </div>
+                    <div>
+                      <p class="text-xs font-semibold text-white">${l.aksi}</p>
+                      <p class="text-[11px] text-slate-400">Aktor: <span class="text-slate-300">${l.aktorRole}</span> • Slot: #${l.slot.toLocaleString('id-ID')}</p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-3 sm:text-right">
+                    <div>
+                      <span class="text-[11px] text-slate-400 block">${l.timestamp}</span>
+                      <span class="font-mono text-[10px] text-brand-300">${formatShortKey(l.signature, 6, 6)}</span>
+                    </div>
+                    ${getStatusBadge(l.status)}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // PAGE 8: FEED LOG TRANSAKSI ON-CHAIN LENGKAP
+    // =========================================================================
+    function renderPublicAuditPage(c) {
+      c.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+            <div>
+              <h2 class="text-xl sm:text-2xl font-bold text-white">📜 Feed Log Transaksi On-Chain</h2>
+              <p class="text-xs text-slate-400 mt-1">Seluruh mutasi status dan tanda tangan digital tercatat permanen di ledger Solana</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-mono text-slate-400">Total: ${APP_STATE.auditLogs.length} Entri</span>
+            </div>
+          </div>
+
+          <div class="glass-card overflow-hidden">
+            <div class="p-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <input type="text" id="auditSearchInput" oninput="filterAuditLogsTable()" placeholder="Cari TX ID, Program ID, atau Aksi..." 
+                     class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500 sm:w-72">
+              <select id="auditStatusFilter" onchange="filterAuditLogsTable()" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none">
+                <option value="">Semua Status</option>
+                <option value="Allocated">Allocated</option>
+                <option value="Released">Released</option>
+                <option value="Acknowledged">Acknowledged</option>
+              </select>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-slate-900/80 text-slate-400 font-mono uppercase text-[11px]">
+                  <tr>
+                    <th class="px-5 py-3">Signature Transaksi</th>
+                    <th class="px-5 py-3">Aksi & Program</th>
+                    <th class="px-5 py-3">Aktor Penandatangan</th>
+                    <th class="px-5 py-3">Slot Devnet</th>
+                    <th class="px-5 py-3">Waktu (WIB)</th>
+                    <th class="px-5 py-3">Status</th>
+                    <th class="px-5 py-3 text-right">Solana Explorer</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800" id="auditLogsTableBody">
+                  ${renderAuditLogRows(APP_STATE.auditLogs)}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderAuditLogRows(logs) {
+      return logs.map(l => `
+        <tr class="hover:bg-slate-800/40 transition-colors">
+          <td class="px-5 py-3.5 font-mono text-brand-300 font-semibold cursor-pointer" onclick="openTxInspector('${l.signature}')">
+            ${formatShortKey(l.signature, 6, 6)}
+          </td>
+          <td class="px-5 py-3.5 text-white font-medium">
+            <div>${l.aksi}</div>
+            <span class="text-[10px] text-slate-400 font-mono">${l.programId}</span>
+          </td>
+          <td class="px-5 py-3.5 text-slate-300">
+            <div>${l.aktorRole}</div>
+            <span class="text-[10px] font-mono text-slate-500">${formatShortKey(l.aktorWallet, 4, 4)}</span>
+          </td>
+          <td class="px-5 py-3.5 font-mono text-slate-400">#${l.slot.toLocaleString('id-ID')}</td>
+          <td class="px-5 py-3.5 text-slate-400">${l.timestamp}</td>
+          <td class="px-5 py-3.5">${getStatusBadge(l.status)}</td>
+          <td class="px-5 py-3.5 text-right">
+            <button onclick="openTxInspector('${l.signature}')" class="px-2.5 py-1 rounded bg-brand-500/10 hover:bg-brand-500/20 text-brand-300 border border-brand-500/30 text-[11px] font-medium transition-all">
+              Detail TX →
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function filterAuditLogsTable() {
+      const q = document.getElementById('auditSearchInput').value.toLowerCase();
+      const status = document.getElementById('auditStatusFilter').value;
+
+      const filtered = APP_STATE.auditLogs.filter(l => {
+        const matchesQ = l.signature.toLowerCase().includes(q) || 
+                         l.programId.toLowerCase().includes(q) || 
+                         l.aksi.toLowerCase().includes(q) ||
+                         l.aktorWallet.toLowerCase().includes(q);
+        const matchesStatus = !status || l.status === status;
+        return matchesQ && matchesStatus;
+      });
+
+      document.getElementById('auditLogsTableBody').innerHTML = renderAuditLogRows(filtered);
+    }
+
+    // =========================================================================
+    // PAGE 9: VERIFIKASI SERTIFIKAT & STATUS (MODUL 2 SECTION 6 SPEC)
+    // =========================================================================
+    function renderVerifyExplorerPage(c) {
+      c.innerHTML = `
+        <div class="space-y-6 max-w-3xl mx-auto">
+          <div class="text-center space-y-2 pb-4 border-b border-slate-800">
+            <h2 class="text-2xl font-bold text-white">🔍 Halaman Verifikasi Status / Sertifikat</h2>
+            <p class="text-xs text-slate-400">Verifikasi instan program beasiswa sesuai spesifikasi Bagian 6 Modul 2 Praktikum</p>
+          </div>
+
+          <div class="glass-card p-6 sm:p-8 space-y-4">
+            <div class="space-y-2">
+              <label class="text-xs text-slate-300 font-medium block">Masukkan Kode ID Program / Kode Sertifikat Beasiswa:</label>
+              <div class="flex flex-col sm:flex-row gap-2.5">
+                <input type="text" id="verifyQueryInput" placeholder="Contoh: BEA-2025-001 atau BEA-2025-003" 
+                       class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white font-mono uppercase focus:outline-none focus:border-brand-500">
+                <button onclick="handleExecuteVerification()" class="px-6 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs shadow-md transition-all">
+                  Cek Validitas
+                </button>
+              </div>
+            </div>
+
+            <!-- Quick Suggestions -->
+            <div class="flex items-center gap-2 text-[11px] text-slate-400 flex-wrap">
+              <span>Coba cepat:</span>
+              <button onclick="fillAndVerify('BEA-2025-001')" class="underline text-brand-400 hover:text-brand-300">BEA-2025-001 (Prestasi)</button>
+              <span>•</span>
+              <button onclick="fillAndVerify('BEA-2025-003')" class="underline text-brand-400 hover:text-brand-300">BEA-2025-003 (Riset)</button>
+              <span>•</span>
+              <button onclick="fillAndVerify('BEA-2025-002')" class="underline text-brand-400 hover:text-brand-300">BEA-2025-002 (UKT)</button>
+            </div>
+          </div>
+
+          <!-- Result Container (Strictly Formatted as Modul 2 Section 6) -->
+          <div id="verificationResultContainer"></div>
+        </div>
+      `;
+    }
+
+    function fillAndVerify(id) {
+      document.getElementById('verifyQueryInput').value = id;
+      handleExecuteVerification();
+    }
+
+    function handleExecuteVerification() {
+      const q = document.getElementById('verifyQueryInput').value.trim().toUpperCase();
+      const container = document.getElementById('verificationResultContainer');
+      if (!q) {
+        showToast('Masukkan ID Program terlebih dahulu!', 'warning');
+        return;
+      }
+
+      const prog = APP_STATE.programs.find(p => p.id === q);
+      if (prog) {
+        container.innerHTML = `
+          <div class="glass-card p-6 sm:p-8 space-y-5 border-t-4 border-t-brand-500 animate-fadeSlideIn">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center font-bold text-lg">
+                  ✓
+                </div>
+                <div>
+                  <h3 class="text-base font-bold text-white">${prog.nama}</h3>
+                  <p class="text-xs text-slate-400">Verifikasi Sukses • Integritas Data Terjamin</p>
+                </div>
+              </div>
+              <div>${getStatusBadge(prog.status)}</div>
+            </div>
+
+            <!-- Modul 2 Section 6 Spec Display -->
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5 font-mono text-xs">
+              <div class="flex justify-between py-1 border-b border-slate-800/80">
+                <span class="text-slate-400 font-sans">Certificate / Program ID:</span>
+                <span class="text-brand-300 font-bold">${prog.id}</span>
+              </div>
+              <div class="flex justify-between py-1 border-b border-slate-800/80">
+                <span class="text-slate-400 font-sans">Status Keabsahan:</span>
+                <span class="text-brand-400 font-bold">VALID (On-Chain Confirmed)</span>
+              </div>
+              <div class="flex justify-between py-1 border-b border-slate-800/80">
+                <span class="text-slate-400 font-sans">Verification Hash:</span>
+                <span class="text-brand-300 break-all select-all">${prog.batchHash}</span>
+              </div>
+              <div class="flex justify-between py-1 border-b border-slate-800/80">
+                <span class="text-slate-400 font-sans">Network:</span>
+                <span class="text-slate-200">Solana Devnet Simulation</span>
+              </div>
+              <div class="flex justify-between py-1 border-b border-slate-800/80">
+                <span class="text-slate-400 font-sans">Total Alokasi Dana:</span>
+                <span class="text-white">${prog.totalDana}</span>
+              </div>
+              <div class="flex justify-between py-1">
+                <span class="text-slate-400 font-sans">Jumlah Penerima:</span>
+                <span class="text-white">${prog.penerimaCount} Mahasiswa</span>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-2">
+              <span class="text-xs text-slate-500">Tanggal Terdaftar: ${prog.tanggalAlokasi}</span>
+              <a href="https://explorer.solana.com/tx/${prog.batchHash}?cluster=devnet" target="_blank" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md">
+                <span>Periksa di Solana Explorer</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+              </a>
+            </div>
+          </div>
+        `;
+      } else {
+        container.innerHTML = `
+          <div class="glass-card p-6 sm:p-8 text-center space-y-3 border-t-4 border-t-red-500 animate-fadeSlideIn">
+            <div class="w-12 h-12 rounded-full bg-red-500/20 text-red-400 text-2xl flex items-center justify-center mx-auto">
+              ✕
+            </div>
+            <h3 class="text-base font-bold text-red-400">Kode Sertifikat / Program Tidak Valid</h3>
+            <p class="text-xs text-slate-400 max-w-md mx-auto">
+              ID "${q}" tidak ditemukan dalam catatan on-chain GrantTrace. Pastikan format penulisan benar atau hubungi pihak pengelola beasiswa.
+            </p>
+          </div>
+        `;
+      }
+    }
+
+    // =========================================================================
+    // PAGE 10: ARSITEKTUR & THREAT MODEL (MODUL 1 BAB 4 & 5)
+    // =========================================================================
+    function renderArchitectureThreatPage(c) {
+      c.innerHTML = `
+        <div class="space-y-6">
+          <div class="pb-4 border-b border-slate-800">
+            <h2 class="text-xl sm:text-2xl font-bold text-white">🛡️ Arsitektur Data & Analisis Risiko Keamanan</h2>
+            <p class="text-xs text-slate-400 mt-1">Implementasi kepatuhan Bagian 4 & 5 Modul 1 Praktikum Keamanan Data dan Blockchain</p>
+          </div>
+
+          <!-- Section 1: Data Classification -->
+          <div class="glass-card p-6 space-y-4">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <span>🏗️ Klasifikasi Data: On-Chain vs Off-Chain</span>
+            </h3>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-slate-900 text-slate-400 font-mono uppercase text-[11px]">
+                  <tr>
+                    <th class="px-4 py-3">Kategori Data</th>
+                    <th class="px-4 py-3">Penyimpanan yang Disarankan</th>
+                    <th class="px-4 py-3">Alasan Arsitektur & Keamanan</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 text-slate-300">
+                  <tr>
+                    <td class="px-4 py-3 font-semibold text-white">Identitas Pribadi (Nama, NIK, NIM, HP, Email)</td>
+                    <td class="px-4 py-3 font-mono text-blue-300">Database Off-Chain (PostgreSQL)</td>
+                    <td class="px-4 py-3 text-slate-400">Wajib dilindungi privasinya (UU PDP / GDPR) dan dapat diperbarui bila ada revisi administratif.</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-3 font-semibold text-white">Dokumen Pendukung (Slip Gaji, SKTM, Rekening)</td>
+                    <td class="px-4 py-3 font-mono text-blue-300">Object Storage Off-Chain (Encrypted S3)</td>
+                    <td class="px-4 py-3 text-slate-400">Ukuran berkas besar dan memerlukan kontrol akses berbasis otorisasi khusus (RBAC).</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-3 font-semibold text-white">Public Key Wallet Aktor (Admin & Mahasiswa)</td>
+                    <td class="px-4 py-3 font-mono text-purple-300">Off-Chain & On-Chain</td>
+                    <td class="px-4 py-3 text-slate-400">Alamat penandatanganan transaksi dan mapping profil pengguna di database.</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-3 font-semibold text-white">Hash Daftar Penerima (Batch SHA-256)</td>
+                    <td class="px-4 py-3 font-mono text-brand-300">Blockchain On-Chain (Solana Devnet)</td>
+                    <td class="px-4 py-3 text-slate-400">Bukti kriptografis integritas agar admin tidak dapat menyelipkan mahasiswa fiktif secara rahasia.</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-3 font-semibold text-white">Status Distribusi Termin (Allocated, Released, Done)</td>
+                    <td class="px-4 py-3 font-mono text-brand-300">Blockchain On-Chain (Solana Devnet)</td>
+                    <td class="px-4 py-3 text-slate-400">Konsensus desentralisasi menjamin status tidak dapat diputarbalikkan (non-repudiation).</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-3 font-semibold text-white">Jejak Audit & Timestamp (Signature, Slot, Unix Time)</td>
+                    <td class="px-4 py-3 font-mono text-brand-300">Blockchain On-Chain (Solana Devnet)</td>
+                    <td class="px-4 py-3 text-slate-400">Bukti kronologis waktu pencairan yang objektif dan dapat diaudit publik secara independen.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Section 2: Threat Modeling Table -->
+          <div class="glass-card p-6 space-y-4">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <span>⚠️ Analisis Risiko Keamanan Awal (Threat Modeling)</span>
+            </h3>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-slate-900 text-slate-400 font-mono uppercase text-[11px]">
+                  <tr>
+                    <th class="px-4 py-3">Aset & Komponen</th>
+                    <th class="px-4 py-3">Potensi Ancaman (Threat)</th>
+                    <th class="px-4 py-3">Tingkat Dampak</th>
+                    <th class="px-4 py-3">Strategi Mitigasi</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 text-slate-300">
+                  <tr>
+                    <td class="px-4 py-3 font-semibold text-white">Privasi Mahasiswa</td>
+                    <td class="px-4 py-3 text-red-300">Kebocoran Data PII: Penulisan NIK/Nama ke memo on-chain.</td>
+                    <td class="px-4 py-3"><span class="px-2 py-0.5 rounded bg-red-500/20 text-red-400 font-bold">Kritis</span></td>
+                    <td class="px-4 py-3 text-slate-400">Sanitasi ketat frontend/backend; hanya hash SHA-256 dan ID acak yang dikirim ke node Solana.</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-3 font-semibold text-white">Alokasi Dana</td>
+                    <td class="px-4 py-3 text-amber-300">Phantom Beneficiary: Admin memasukkan wallet sendiri sebagai penerima fiktif.</td>
+                    <td class="px-4 py-3"><span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold">Tinggi</span></td>
+                    <td class="px-4 py-3 text-slate-400">Hash daftar penerima wajib diikat dengan SK Resmi Rektorat yang dipublikasikan terbuka sebelum termin dibuka.</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-3 font-semibold text-white">Kredensial Wallet</td>
+                    <td class="px-4 py-3 text-amber-300">Private Key Compromise: Kunci privat pengelola dicuri lewat phishing.</td>
+                    <td class="px-4 py-3"><span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold">Sedang</span></td>
+                    <td class="px-4 py-3 text-slate-400">Pada fase Devnet tanpa dana nyata. Pada fase produksi wajib skema Multi-Signature Wallet (Squads Protocol).</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-3 font-semibold text-white">Integritas Frontend</td>
+                    <td class="px-4 py-3 text-slate-300">Client-Side Spoofing: Manipulasi DOM agar dashboard tampak sudah menerima dana.</td>
+                    <td class="px-4 py-3"><span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 font-bold">Rendah</span></td>
+                    <td class="px-4 py-3 text-slate-400">Status antarmuka divalidasi langsung dengan query on-chain state ke RPC Solana Devnet.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // PAGE 11: DOKUMENTASI & PROMPT LOG (MODUL 2 SUBMISSION HELPER)
+    // =========================================================================
+    function renderModulDocsPage(c) {
+      c.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+            <div>
+              <h2 class="text-xl sm:text-2xl font-bold text-white">📖 Dokumentasi & Rekayasa Prompt (Modul 1 & 2)</h2>
+              <p class="text-xs text-slate-400 mt-1">Data siap salin untuk pelaporan tugas praktikum dan rubrik penilaian</p>
+            </div>
+            <div class="text-xs text-brand-300 font-mono">
+              Aulia Rachman • NIM: G.231.24.0065
+            </div>
+          </div>
+
+          <!-- Prompt 1: Initial Prompt -->
+          <div class="glass-card p-6 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span class="w-6 h-6 rounded bg-brand-500/20 text-brand-300 flex items-center justify-center text-xs">1</span>
+                <span>Prompt Awal (Initial Prototype Prompt — Lovable / AI)</span>
+              </h3>
+              <button onclick="copyPrompt('promptAwal')" class="text-xs text-brand-400 hover:underline font-mono">📋 Salin Prompt</button>
+            </div>
+            <pre id="promptAwal" class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 font-mono text-[11px] leading-relaxed whitespace-pre-wrap select-all">Buat prototype web responsive dApp bernama GrantTrace.
+
+Tujuan: Membantu pengelola beasiswa mencatat distribusi dana beasiswa per termin dan memfasilitasi audit penyaluran secara terbuka menggunakan jejak rekam terdesentralisasi.
+
+Target Pengguna:
+1. Admin Pengelola Beasiswa
+2. Mahasiswa Penerima Beasiswa
+3. Auditor / Publik
+
+Halaman yang Dibutuhkan:
+- Landing Page: Penjelasan singkat GrantTrace, metrik total beasiswa tersalurkan, dan kotak pencarian audit instan berdasarkan ID Program.
+- Connect Wallet: Simulasi integrasi wallet Solana (Phantom devnet).
+- Dashboard Admin: Form alokasi beasiswa baru, daftar mahasiswa penerima (nama disamarkan), tombol aksi rilis termin, dan generator hash.
+- Portal Mahasiswa: Ringkasan beasiswa yang diterima, rincian termin (Termin 1, Termin 2), dan tombol 'Konfirmasi Terima Dana'.
+- Halaman Audit Publik: Feed log transaksi on-chain real-time, status milestone (Allocated, Released, Acknowledged), serta tautan ke Solana Explorer Devnet.
+
+UI & Desain:
+- Tema warna: Modern emerald green (#059669) dipadukan dengan dark slate untuk kesan aman dan transparan.
+- Responsive desktop sidebar dan mobile navigation.
+- Gunakan data dummy sintetis, jangan meminta private key atau data pribadi nyata (PII).</pre>
+          </div>
+
+          <!-- Prompt 2: UI Improvement Prompt -->
+          <div class="glass-card p-6 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span class="w-6 h-6 rounded bg-blue-500/20 text-blue-300 flex items-center justify-center text-xs">2</span>
+                <span>Prompt Perbaikan Tampilan (UI Refinement Prompt)</span>
+              </h3>
+              <button onclick="copyPrompt('promptUI')" class="text-xs text-brand-400 hover:underline font-mono">📋 Salin Prompt</button>
+            </div>
+            <pre id="promptUI" class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 font-mono text-[11px] leading-relaxed whitespace-pre-wrap select-all">Perbaiki tampilan dashboard admin dan portal mahasiswa GrantTrace.
+
+Perubahan:
+- Tambahkan ringkasan metrik statistik berupa visual progress bar rasio status program (Allocated, Released, Acknowledged).
+- Tambahkan grafik batang jumlah transaksi per bulan.
+- Buat visual stepper status milestone termin pencairan (Termin 1, Termin 2, Termin 3) dengan status warna dan checkmark.
+- Tambahkan modal rincian transaksi (Solana Devnet Transaction Inspector) dengan signature, slot, program ID, dan tautan Solana Explorer.
+- Pertahankan fitur role switcher yang mulus tanpa refresh halaman.</pre>
+          </div>
+
+          <!-- Prompt 3: Security & Validation Prompt -->
+          <div class="glass-card p-6 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span class="w-6 h-6 rounded bg-purple-500/20 text-purple-300 flex items-center justify-center text-xs">3</span>
+                <span>Prompt Validasi & Kepatuhan Keamanan (Modul 2)</span>
+              </h3>
+              <button onclick="copyPrompt('promptSec')" class="text-xs text-brand-400 hover:underline font-mono">📋 Salin Prompt</button>
+            </div>
+            <pre id="promptSec" class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 font-mono text-[11px] leading-relaxed whitespace-pre-wrap select-all">Tambahkan validasi form alokasi beasiswa dan perlindungan privasi PII:
+
+Perubahan:
+- Pastikan input ID Program dan Nama Program wajib diisi dengan validasi unik.
+- Terapkan masking data identitas mahasiswa (nama disamarkan, NIK terenkripsi) untuk mencegah kebocoran PII.
+- Gunakan Web Crypto API asli untuk menghasilkan SHA-256 batch hash pada generator.
+- Tambahkan disclaimer label di seluruh halaman: "Fitur blockchain pada Modul 2 masih berupa simulasi antarmuka dan belum melakukan transaksi nyata."
+- Jangan meminta private key atau seed phrase pada simulasi connect wallet.</pre>
+          </div>
+        </div>
+      `;
+    }
+
+    function copyPrompt(elementId) {
+      const text = document.getElementById(elementId).innerText;
+      navigator.clipboard.writeText(text);
+      showToast('Prompt berhasil disalin ke clipboard!', 'info');
+    }
+
+    // ==================== APP INITIALIZATION ====================
+    document.addEventListener('DOMContentLoaded', () => {
+      updateRoleHeaderUI();
+      renderSidebarNav();
+      navigate('landing');
+      updateHeaderWalletUI();
+    });
+  </script>
+</body>
+</html>

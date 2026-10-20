@@ -1,0 +1,13 @@
+{
+  "name": "granttrace",
+  "version": "1.0.0",
+  "description": "GrantTrace - Decentralized Education Grant Audit Trail (Modul 1 & Modul 2)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["blockchain", "solana", "beasiswa", "audit-trail"],
+  "author": "Aulia Rachman",
+  "license": "MIT"
+}
